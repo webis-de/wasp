@@ -2,6 +2,12 @@ package de.webis.warc;
 
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Utility class for working with WARC files.
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ *
+ */
 public class Warcs {
   
   public static final String HEADER_ID = "WARC-Record-ID";
