@@ -19,6 +19,21 @@ import java.util.logging.Logger;
 
 import edu.cmu.lemurproject.WarcRecord;
 
+/**
+ * Creates a {@link Thread} that watches a web archives repository for new
+ * content and passes the new records to a consumer.
+ * <p>
+ * If archives exist already in the directory, they are read in order of their
+ * last modified dates (if set so in the constructor). In this case, it will
+ * monitor the latest archive for changes, but not the others!
+ * </p><p>
+ * Currently, this treats every file (or directory) within the target directory
+ * as an archive and tries to read from it.
+ * </p>
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ *
+ */
 public class ArchiveWatcher extends Thread implements AutoCloseable {
   
   /////////////////////////////////////////////////////////////////////////////
@@ -44,15 +59,26 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
   
+  /**
+   * Create a new watcher for given directory.
+   * @param directory The directory that contains the archive files
+   * @param readExistingArchives Whether archives that already exist in the
+   * directory should be read
+   * @param consumer The consumer to which the records will be passed
+   * @throws IOException
+   */
   public ArchiveWatcher(
-      final Path directory, final Consumer<WarcRecord> consumer)
+      final Path directory, final boolean readExistingArchives,
+      final Consumer<WarcRecord> consumer)
   throws IOException {
     if (consumer == null) { throw new NullPointerException(); }
     this.directory = directory;
     this.consumer = consumer;
     this.reader = null;
     
-    this.readAllFilesInDirectory();
+    if (readExistingArchives) {
+      this.readAllFilesInDirectory();
+    }
 
     this.watchService = FileSystems.getDefault().newWatchService();
     this.directory.register(this.watchService,
@@ -156,7 +182,8 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
     final Consumer<WarcRecord> consumer = record -> {
       System.out.println(record.getHeaderMetadataItem(Warcs.HEADER_TARGET_URI));
     };
-    try (final ArchiveWatcher watcher = new ArchiveWatcher(directory, consumer)) {
+    try (final ArchiveWatcher watcher =
+        new ArchiveWatcher(directory, true, consumer)) {
       watcher.run();
     }
   }

@@ -13,6 +13,17 @@ import java.util.zip.GZIPInputStream;
 
 import edu.cmu.lemurproject.WarcRecord;
 
+/**
+ * Reader for WARC files that passes all read records to a consumer.
+ * <p>
+ * Use the {@link #run()} or {@link #start()} methods to begin reading.
+ * </p><p>
+ * If the archive is still being filled, use {@link OpenWarcReader} instead.
+ * </p>
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ *
+ */
 public class WarcReader extends Thread implements AutoCloseable {
   
   /////////////////////////////////////////////////////////////////////////////
@@ -36,6 +47,12 @@ public class WarcReader extends Thread implements AutoCloseable {
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
   
+  /**
+   * Creates a new reader for an archive.
+   * @param inputFile The archive file
+   * @param consumer Consumer for the WARC records that are read
+   * @throws IOException When the file can not be opened
+   */
   public WarcReader(
       final Path inputFile, final Consumer<WarcRecord> consumer)
   throws IOException {
@@ -45,7 +62,8 @@ public class WarcReader extends Thread implements AutoCloseable {
     this.input = this.openDataInputStream(inputFile);
   }
   
-  protected DataInputStream openDataInputStream(final Path inputFile) throws IOException {
+  protected DataInputStream openDataInputStream(final Path inputFile)
+  throws IOException {
     final InputStream inputStream = this.openFileInputStream(inputFile);
     if (inputFile.toString().endsWith(".gz")) {
       return new DataInputStream(new GZIPInputStream(inputStream));
@@ -54,7 +72,8 @@ public class WarcReader extends Thread implements AutoCloseable {
     }
   }
   
-  protected FileInputStream openFileInputStream(final Path inputFile) throws IOException {
+  protected FileInputStream openFileInputStream(final Path inputFile)
+  throws IOException {
     final File file = inputFile.toFile();
     LOG.fine("Open file: " + inputFile);
     return new FileInputStream(file);
