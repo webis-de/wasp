@@ -1,4 +1,4 @@
-package de.webis.wasp.warc;
+package de.webis.warc;
 
 import java.time.format.DateTimeFormatter;
 

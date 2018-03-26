@@ -1,5 +1,6 @@
-package de.webis.wasp.warc;
+package de.webis.warc;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -8,6 +9,8 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.function.Consumer;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
@@ -57,11 +60,29 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   }
   
   protected void readAllFilesInDirectory() throws IOException {
-    for (final String childName : this.directory.toFile().list()) {
-      final Path child = this.directory.resolve(childName);
-      try (final WarcReader reader = new WarcReader(child, this.consumer)) {
-        reader.run();
+    final File[] children = this.directory.toFile().listFiles();
+    Arrays.sort(children, new Comparator<File>() {
+      @Override
+      public int compare(final File o1, final File o2) {
+        return Long.compare(o1.lastModified(), o2.lastModified());
       }
+    });
+
+    // Read what should be closed files
+    if (children.length >= 2) {
+      for (final File child
+          : Arrays.copyOfRange(children, 0, children.length - 1)) {
+        try (final WarcReader reader = new WarcReader(
+            this.directory.resolve(child.getName()), this.consumer)) {
+          reader.run();
+        }
+      }
+    }
+    
+    // Read what may be the open file
+    if (children.length >= 1) {
+      this.openFile(this.directory.resolve(
+          children[children.length - 1].getName()));
     }
   }
   
@@ -116,7 +137,7 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   
   protected void openFile(final Path inputFile) throws IOException {
     this.closeFile();
-    this.reader = new BlockingWarcReader(inputFile, this.consumer, 1000);
+    this.reader = new OpenWarcReader(inputFile, this.consumer, 1000);
     this.reader.start();
   }
   

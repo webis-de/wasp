@@ -1,4 +1,4 @@
-package de.webis.wasp.warc;
+package de.webis.warc;
 
 import java.io.DataInputStream;
 import java.io.File;
@@ -73,6 +73,7 @@ public class WarcReader extends Thread implements AutoCloseable {
         record = WarcRecord.readNextWarcRecord(this.input); 
       }
       LOG.fine("Finished " + this);
+      this.close();
     } catch (final IOException exception) {
       LOG.log(Level.SEVERE,
           "Error while reading from " + this.inputFile, exception);
