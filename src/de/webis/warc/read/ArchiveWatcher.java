@@ -17,7 +17,6 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import de.webis.warc.Warcs;
 import edu.cmu.lemurproject.WarcRecord;
 
 /**
@@ -173,16 +172,17 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   /////////////////////////////////////////////////////////////////////////////
   
   public static void main(final String[] args) throws IOException {
-    final Logger packageLogger = Logger.getLogger("de.webis.wasp.warc");
+    final Logger packageLogger = Logger.getLogger("de.webis.warc");
     packageLogger.setLevel(Level.FINE);
     final Handler handler = new ConsoleHandler();
     handler.setLevel(Level.FINE);
     packageLogger.addHandler(handler);
     
     final Path directory = Paths.get("/home/dogu3912/tmp/warcprox/archive");
-    final Consumer<WarcRecord> consumer = record -> {
-      System.out.println(record.getHeaderMetadataItem(Warcs.HEADER_TARGET_URI));
-    };
+    final Consumer<WarcRecord> consumer = new RecordMatchingConsumer(
+        pair -> {
+          System.out.print(".");
+        });
     try (final ArchiveWatcher watcher =
         new ArchiveWatcher(directory, true, consumer)) {
       watcher.run();

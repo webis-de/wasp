@@ -131,6 +131,10 @@ public class Warcs {
   public static String getTargetUri(final WarcRecord record) {
     return Warcs.getHeader(record, HEADER_TARGET_URI);
   }
+  
+  public static String getConcurrentRecordId(final WarcRecord record) {
+    return Warcs.getHeader(record, HEADER_CONCURRENT);
+  }
 
   /////////////////////////////////////////////////////////////////////////////
   // HTML
