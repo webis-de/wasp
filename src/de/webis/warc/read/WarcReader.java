@@ -1,4 +1,4 @@
-package de.webis.warc;
+package de.webis.warc.read;
 
 import java.io.DataInputStream;
 import java.io.File;

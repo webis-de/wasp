@@ -1,4 +1,4 @@
-package de.webis.warc;
+package de.webis.warc.read;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +17,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import de.webis.warc.Warcs;
 import edu.cmu.lemurproject.WarcRecord;
 
 /**
