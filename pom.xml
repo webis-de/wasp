@@ -32,5 +32,10 @@
   		<artifactId>jericho-html</artifactId>
   		<version>3.4</version>
   	</dependency>
+  	<dependency>
+  		<groupId>org.eclipse.jetty</groupId>
+  		<artifactId>jetty-servlet</artifactId>
+  		<version>9.4.7.RC0</version>
+  	</dependency>
   </dependencies>
 </project>

@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
@@ -12,8 +11,6 @@ import java.nio.file.WatchService;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.Consumer;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -165,28 +162,6 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
     this.closeFile();
     this.reader = new OpenWarcReader(inputFile, this.consumer, 1000);
     this.reader.start();
-  }
-  
-  /////////////////////////////////////////////////////////////////////////////
-  // MAIN
-  /////////////////////////////////////////////////////////////////////////////
-  
-  public static void main(final String[] args) throws IOException {
-    final Logger packageLogger = Logger.getLogger("de.webis.warc");
-    packageLogger.setLevel(Level.FINE);
-    final Handler handler = new ConsoleHandler();
-    handler.setLevel(Level.FINE);
-    packageLogger.addHandler(handler);
-    
-    final Path directory = Paths.get("/home/dogu3912/tmp/warcprox/archive");
-    final Consumer<WarcRecord> consumer = new RecordMatchingConsumer(
-        pair -> {
-          System.out.print(".");
-        });
-    try (final ArchiveWatcher watcher =
-        new ArchiveWatcher(directory, true, consumer)) {
-      watcher.run();
-    }
   }
 
 }
