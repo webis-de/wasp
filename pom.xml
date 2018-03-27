@@ -27,5 +27,10 @@
   		<artifactId>elasticsearch-rest-high-level-client</artifactId>
   		<version>6.2.3</version>
   	</dependency>
+  	<dependency>
+  		<groupId>net.htmlparser.jericho</groupId>
+  		<artifactId>jericho-html</artifactId>
+  		<version>3.4</version>
+  	</dependency>
   </dependencies>
 </project>

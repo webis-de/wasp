@@ -62,14 +62,14 @@ public class Warcs {
   
   public static final String HEADER_REFERS_TO = "WARC-Refers-To";
   
+  public static final String HEADER_TARGET_URI = "WARC-Target-URI";
+  
+  public static final String HEADER_CONCURRENT = "WARC-Concurrent-To";
+  
   public static final String HEADER_DATE = "WARC-Date";
   
   public static final DateTimeFormatter HEADER_DATE_FORMAT =
       DateTimeFormatter.ISO_INSTANT;
-  
-  public static final String HEADER_TARGET_URI = "WARC-Target-URI";
-  
-  public static final String HEADER_CONCURRENT = "WARC-Concurrent-To";
   
 
   public static final Pattern HTTP_HEADER_CONTENT_TYPE_HTML = Pattern.compile(
@@ -134,6 +134,10 @@ public class Warcs {
   
   public static String getConcurrentRecordId(final WarcRecord record) {
     return Warcs.getHeader(record, HEADER_CONCURRENT);
+  }
+  
+  public static String getReferedToRecordId(final WarcRecord record) {
+    return Warcs.getHeader(record, HEADER_REFERS_TO);
   }
 
   /////////////////////////////////////////////////////////////////////////////
