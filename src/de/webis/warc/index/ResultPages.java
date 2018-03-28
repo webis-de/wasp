@@ -29,9 +29,9 @@ public class ResultPages {
   // FUNCTIONALITY
   /////////////////////////////////////////////////////////////////////////////
   
-  public List<Result> getPage(final int page)
+  public List<Result> getPage(final int pageNumber)
   throws IOException {
-    final int pageIndex = page - 1;
+    final int pageIndex = pageNumber - 1;
     while (this.results.size() < pageIndex) {
       this.results.add(null);
     }
@@ -39,7 +39,7 @@ public class ResultPages {
     if (this.results.size() <= pageIndex
         || this.results.get(pageIndex) == null) {
       this.results.add(pageIndex,
-          Collections.unmodifiableList(this.fetcher.fetch(page)));
+          Collections.unmodifiableList(this.fetcher.fetch(pageNumber)));
     }
     return this.results.get(pageIndex);
   }

@@ -88,7 +88,7 @@ public class WarcReader extends Thread implements AutoCloseable {
     try {
       WarcRecord record = WarcRecord.readNextWarcRecord(this.input);
       while (record != null) {
-        this.consumer.accept(record);
+        this.consume(record);
         record = WarcRecord.readNextWarcRecord(this.input); 
       }
       LOG.fine("Finished " + this);
@@ -97,6 +97,10 @@ public class WarcReader extends Thread implements AutoCloseable {
       LOG.log(Level.SEVERE,
           "Error while reading from " + this.inputFile, exception);
     }
+  }
+  
+  protected void consume(final WarcRecord record) {
+    this.consumer.accept(record);
   }
   
   @Override

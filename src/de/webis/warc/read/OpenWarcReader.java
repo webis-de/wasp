@@ -38,6 +38,8 @@ public class OpenWarcReader extends WarcReader {
   
   protected final long pollIntervalMillis;
   
+  protected boolean consume;
+  
   protected boolean closed;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -47,18 +49,22 @@ public class OpenWarcReader extends WarcReader {
   /**
    * Creates a new reader for an archive that is still being filled.
    * @param inputFile The archive file
+   * @param consumeExistingRecords Whether records that are already in the file
+   * should also be consumed
    * @param consumer Consumer for the WARC records that are read
    * @param pollIntervalMillis On encountering the end of archive, poll the file
    * in this interval to check when it has more content 
    * @throws IOException When the file can not be opened
    */
   public OpenWarcReader(
-      final Path inputFile, final Consumer<WarcRecord> consumer,
+      final Path inputFile, final boolean consumeExistingRecords,
+      final Consumer<WarcRecord> consumer,
       final long pollIntervalMillis)
   throws IOException {
     super(inputFile, consumer);
-    this.closed = false;
     this.pollIntervalMillis = pollIntervalMillis;
+    this.consume = consumeExistingRecords;
+    this.closed = false;
   }
   
   @Override
@@ -77,6 +83,13 @@ public class OpenWarcReader extends WarcReader {
   public void close() throws IOException {
     LOG.fine("Closing " + this.inputFile);
     this.closed = true;
+  }
+  
+  @Override
+  protected void consume(final WarcRecord record) {
+    if (this.consume) {
+      super.consume(record);
+    }
   }
 
   protected void closeStream() throws IOException {
@@ -105,6 +118,7 @@ public class OpenWarcReader extends WarcReader {
       int available = super.available();
       try {
         while (available == 0 && !OpenWarcReader.this.closed) {
+          OpenWarcReader.this.consume = true;
           Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
           available = super.available();
         }
@@ -123,6 +137,7 @@ public class OpenWarcReader extends WarcReader {
       int read = super.read();
       try {
         while (read == -1 && !OpenWarcReader.this.closed) {
+          OpenWarcReader.this.consume = true;
           Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
           read = super.read();
         }
@@ -141,6 +156,7 @@ public class OpenWarcReader extends WarcReader {
       int read = super.read(b);
       try {
         while (read == -1 && !OpenWarcReader.this.closed) {
+          OpenWarcReader.this.consume = true;
           Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
           read = super.read(b);
         }
@@ -159,6 +175,7 @@ public class OpenWarcReader extends WarcReader {
       int read = super.read(b, off, len);
       try {
         while (read == -1 && !OpenWarcReader.this.closed) {
+          OpenWarcReader.this.consume = true;
           Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
           read = super.read(b, off, len);
         }

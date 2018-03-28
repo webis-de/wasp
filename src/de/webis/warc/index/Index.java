@@ -36,21 +36,23 @@ public class Index implements AutoCloseable {
   // STATIC VALUES
   /////////////////////////////////////////////////////////////////////////////
   
-  protected static final String INDEX_NAME = "archive";
+  public static final int DEFAULT_PORT = 9200;
   
-  protected static final String TYPE_NAME = "response";
+  public static final String INDEX_NAME = "archive";
   
-  protected static final String FIELD_REVISITED_NAME = "revisited";
+  public static final String TYPE_NAME = "response";
   
-  protected static final String FIELD_TITLE_NAME = "title";
+  public static final String FIELD_REVISITED_NAME = "revisited";
   
-  protected static final String FIELD_CONTENT_NAME = "content";
+  public static final String FIELD_TITLE_NAME = "title";
   
-  protected static final String FIELD_REQUEST_NAME = "request";
+  public static final String FIELD_CONTENT_NAME = "content";
   
-  protected static final String FIELD_URI_NAME = "uri";
+  public static final String FIELD_REQUEST_NAME = "request";
   
-  protected static final String FIELD_DATE_NAME = "date";
+  public static final String FIELD_URI_NAME = "uri";
+  
+  public static final String FIELD_DATE_NAME = "date";
   
   protected static final String TYPE_MAPPING = 
       "{\"" + TYPE_NAME + "\":{\n" + 
@@ -212,6 +214,18 @@ public class Index implements AutoCloseable {
   protected SearchResponse search(final SearchRequest searchRequest)
   throws IOException {
     return this.client.search(searchRequest);
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // MAIN
+  /////////////////////////////////////////////////////////////////////////////
+  
+  public static void main(final String[] args) throws IOException {
+    final int port =
+        args.length == 0 ? DEFAULT_PORT : Integer.parseInt(args[0]);
+    try (final Index index = new Index(port)) {
+      index.initialize();
+    }
   }
 
 }

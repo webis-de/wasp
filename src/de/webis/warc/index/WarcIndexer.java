@@ -1,8 +1,11 @@
 package de.webis.warc.index;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -10,6 +13,7 @@ import org.apache.http.HttpResponse;
 import org.joda.time.Instant;
 
 import de.webis.warc.Warcs;
+import de.webis.warc.read.ArchiveWatcher;
 import edu.cmu.lemurproject.WarcRecord;
 import net.htmlparser.jericho.CharacterReference;
 import net.htmlparser.jericho.Element;
@@ -168,6 +172,30 @@ public class WarcIndexer implements Consumer<WarcRecord> {
         Warcs.getConcurrentRecordId(record),
         Warcs.getTargetUri(record),
         new Instant(Warcs.getDate(record).getEpochSecond()));
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // MAIN
+  /////////////////////////////////////////////////////////////////////////////
+  
+  public static void main(final String[] args) throws IOException {
+    final ConsoleHandler handler = new ConsoleHandler();
+    handler.setLevel(Level.FINE);
+    final Logger logger = Logger.getLogger("de.webis.warc");
+    logger.addHandler(handler);
+    logger.setLevel(Level.FINE);
+    
+    final Path directory = Paths.get("/home/dogu3912/tmp/warcprox/archive");
+    final int port =
+        args.length != 2 ? Index.DEFAULT_PORT : Integer.parseInt(args[1]);
+    try (final Index index = new Index(port)) {
+      final WarcIndexer indexer = new WarcIndexer(index);
+      
+      try (final ArchiveWatcher watcher =
+          new ArchiveWatcher(directory, false, indexer)) {
+        watcher.run();
+      }
+    }
   }
   
 }

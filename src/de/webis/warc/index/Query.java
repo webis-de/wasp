@@ -64,6 +64,30 @@ public class Query {
     return this.to;
   }
   
+  /////////////////////////////////////////////////////////////////////////////
+  // FUNCTIONALITY
+  /////////////////////////////////////////////////////////////////////////////
+  
+  @Override
+  public boolean equals(final Object obj) {
+    if (obj == null) { return false; }
+    if (obj instanceof Query) {
+      final Query other = (Query) obj;
+      
+      if (!this.terms.equals(other.terms)) { return false; }
+      if ((this.from == null && other.from != null)
+          || (this.from != null && !this.from.equals(other.from))) {
+        return false;
+      }
+      if ((this.to == null && other.to != null)
+          || (this.to != null && !this.to.equals(other.to))) {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  }
+  
   protected QueryBuilder getBuilder() {
     final QueryBuilder termQueryBuilder = this.getTermQueryBuilder();
     final QueryBuilder timeQueryBuilder = this.getTimeQueryBuilder();

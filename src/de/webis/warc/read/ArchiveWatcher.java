@@ -59,30 +59,30 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   /**
    * Create a new watcher for given directory.
    * @param directory The directory that contains the archive files
-   * @param readExistingArchives Whether archives that already exist in the
-   * directory should be read
+   * @param readExistingRecords Whether records that already exist in the
+   * archives in the directory should be read
    * @param consumer The consumer to which the records will be passed
    * @throws IOException
    */
   public ArchiveWatcher(
-      final Path directory, final boolean readExistingArchives,
+      final Path directory, final boolean readExistingRecords,
       final Consumer<WarcRecord> consumer)
   throws IOException {
     if (consumer == null) { throw new NullPointerException(); }
     this.directory = directory;
     this.consumer = consumer;
     this.reader = null;
-    
-    if (readExistingArchives) {
-      this.readAllFilesInDirectory();
-    }
+
+    this.initForDirectory(readExistingRecords);
 
     this.watchService = FileSystems.getDefault().newWatchService();
     this.directory.register(this.watchService,
         StandardWatchEventKinds.ENTRY_CREATE);
   }
   
-  protected void readAllFilesInDirectory() throws IOException {
+  protected void initForDirectory(
+      final boolean readExistingRecords)
+  throws IOException {
     final File[] children = this.directory.toFile().listFiles();
     Arrays.sort(children, new Comparator<File>() {
       @Override
@@ -91,13 +91,15 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
       }
     });
 
-    // Read what should be closed files
-    if (children.length >= 2) {
-      for (final File child
-          : Arrays.copyOfRange(children, 0, children.length - 1)) {
-        try (final WarcReader reader = new WarcReader(
-            this.directory.resolve(child.getName()), this.consumer)) {
-          reader.run();
+    if (readExistingRecords) {
+      // Read what should be closed files
+      if (children.length >= 2) {
+        for (final File child
+            : Arrays.copyOfRange(children, 0, children.length - 1)) {
+          try (final WarcReader reader = new WarcReader(
+              this.directory.resolve(child.getName()), this.consumer)) {
+            reader.run();
+          }
         }
       }
     }
@@ -105,7 +107,7 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
     // Read what may be the open file
     if (children.length >= 1) {
       this.openFile(this.directory.resolve(
-          children[children.length - 1].getName()));
+          children[children.length - 1].getName()), readExistingRecords);
     }
   }
   
@@ -123,7 +125,7 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
           if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
             final Path inputFile = this.directory.resolve((Path) event.context());
             LOG.fine("New file created in " + this.directory + ": " + inputFile);
-            this.openFile(inputFile);
+            this.openFile(inputFile, true);
           } else if (kind == StandardWatchEventKinds.OVERFLOW) {
             LOG.warning("Overflow detected when watching " + this.directory);
           } else {
@@ -158,9 +160,12 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
     }
   }
   
-  protected void openFile(final Path inputFile) throws IOException {
+  protected void openFile(
+      final Path inputFile, final boolean consumeExistingRecords)
+  throws IOException {
     this.closeFile();
-    this.reader = new OpenWarcReader(inputFile, this.consumer, 1000);
+    this.reader = new OpenWarcReader(
+        inputFile, consumeExistingRecords, this.consumer, 1000);
     this.reader.start();
   }
 

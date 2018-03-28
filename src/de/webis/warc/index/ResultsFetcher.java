@@ -101,7 +101,7 @@ public class ResultsFetcher {
     final List<Map<String, Object>> requestSources =
       (List<Map<String, Object>>) source.get(Index.FIELD_REQUEST_NAME);
     final ListIterator<Map<String, Object>> requestSourceIterator =
-        requestSources.listIterator(requestSources.size() - 1);
+        requestSources.listIterator(requestSources.size());
     while (requestSourceIterator.hasPrevious()) {
       final MinimalRequest request =
           new MinimalRequest(requestSourceIterator.previous());
@@ -132,7 +132,7 @@ public class ResultsFetcher {
     
     final HighlightBuilder.Field content =
         new HighlightBuilder.Field(Index.FIELD_CONTENT_NAME);
-    content.highlighterType("plain");
+    content.highlighterType("unified");
     highlightBuilder.field(content);
 
     return highlightBuilder;
@@ -166,7 +166,8 @@ public class ResultsFetcher {
     public MinimalRequest(final Map<String, Object> requestSource) {
       this.uri = (String) requestSource.get(Index.FIELD_URI_NAME);
       if (this.uri == null) { throw new NullPointerException("uri"); }
-      this.date = (Instant) requestSource.get(Index.FIELD_DATE_NAME);
+      this.date = Instant.parse(
+          (String) requestSource.get(Index.FIELD_DATE_NAME));
       if (this.date == null) { throw new NullPointerException("date"); }
     }
 
