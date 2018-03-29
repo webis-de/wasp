@@ -74,7 +74,7 @@ public class ResultPageRenderer {
   protected void render(final PrintWriter output, final Result result) {
     output.append(String.format(
         "<div class='result'>\n" +
-        "  <h5><a href='%s'>%s</a></h5><br/>\n" +
+        "  <span class='title'><a href='%s'>%s</a></span><br/>\n" +
         "  <span class='uri'>%s</span> <time datetime='%s'>%s</time><br/>\n" +
         "  <span class='snippet'>%s</span>\n" +
         "</div>\n",
@@ -103,10 +103,6 @@ public class ResultPageRenderer {
   
   protected String getHumanReadableTime(final Instant instant) {
     return instant.toString(HUMAN_READABLE_FORMATTER);
-  }
-  
-  public static void main(final String[] args) {
-    
   }
 
 }

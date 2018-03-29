@@ -20,7 +20,7 @@ public class SearchService extends Thread {
   public void run() {
     final ServletContextHandler servletHandler = new ServletContextHandler();
     servletHandler.setContextPath("/");
-    servletHandler.addServlet(this.servletHolder, "/search");
+    servletHandler.addServlet(this.servletHolder, "/");
     servletHandler.setSessionHandler(new SessionHandler());
 
     final Server server = new Server(this.port);
