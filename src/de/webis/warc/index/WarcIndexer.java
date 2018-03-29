@@ -171,7 +171,7 @@ public class WarcIndexer implements Consumer<WarcRecord> {
     this.index.indexRequest(
         Warcs.getConcurrentRecordId(record),
         Warcs.getTargetUri(record),
-        new Instant(Warcs.getDate(record).getEpochSecond()));
+        new Instant(Warcs.getDate(record).getEpochSecond() * 1000));
   }
   
   /////////////////////////////////////////////////////////////////////////////

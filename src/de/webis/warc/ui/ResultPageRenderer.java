@@ -54,7 +54,7 @@ public class ResultPageRenderer {
     for (final Result result : page) {
       this.render(output, result);
     }
-    output.append("/<div>\n");
+    output.append("</div>\n");
     this.renderFooter(output);
   }
   
