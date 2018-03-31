@@ -2,8 +2,10 @@ package de.webis.warc.ui;
 
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.session.SessionHandler;
+import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.resource.ResourceCollection;
 
 public class SearchService extends Thread {
   
@@ -20,9 +22,22 @@ public class SearchService extends Thread {
   public void run() {
     final ServletContextHandler servletHandler = new ServletContextHandler();
     servletHandler.setContextPath("/");
-    servletHandler.addServlet(this.servletHolder, "/");
     servletHandler.setSessionHandler(new SessionHandler());
 
+    // Search Servlet
+    servletHandler.addServlet(
+        this.servletHolder, "/" + SearchServlet.SERVLET_PATH);
+    
+    // Serve files from resources/static/
+    servletHandler.setBaseResource(new ResourceCollection(
+        this.getClass().getClassLoader().getResource("static")
+        .toExternalForm()));
+    final ServletHolder resourcesServlet =
+        new ServletHolder("static-embedded", DefaultServlet.class);
+    resourcesServlet.setInitParameter("dirAllowed", "true");
+    servletHandler.addServlet(resourcesServlet, "/");
+
+    // Start server
     final Server server = new Server(this.port);
     server.setHandler(servletHandler);
     try {
@@ -39,7 +54,6 @@ public class SearchService extends Thread {
   
   public static void main(final String[] args) {
     final SearchService service = new SearchService(8003);
-    service.setInitParameter(SearchServlet.INIT_PARAMETER_REPLAY_PORT, "8002");
     service.run();
   }
 

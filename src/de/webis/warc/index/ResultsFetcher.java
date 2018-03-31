@@ -74,8 +74,9 @@ public class ResultsFetcher {
     
     final List<Result> results = new ArrayList<>();
     for (final SearchHit hit : hits) {
-      results.add(this.toResult(
-          hit, this.query.getFrom(), this.query.getTo()));
+      final Result result = this.toResult(
+          hit, this.query.getFrom(), this.query.getTo());
+      if (!result.isEmpty()) { results.add(result); }
     }
     return results;
   }
@@ -90,9 +91,10 @@ public class ResultsFetcher {
     final String uri = request.getUri();
     final Instant instant = request.getDate();
     final String title = source.get(Index.FIELD_TITLE_NAME).toString();
+    final String content = source.get(Index.FIELD_CONTENT_NAME).toString();
     final String snippet = this.getSnippet(hit);
     
-    return new Result(score, uri, instant, title, snippet);
+    return new Result(score, uri, instant, title, content, snippet);
   }
   
   protected MinimalRequest pickRequest(

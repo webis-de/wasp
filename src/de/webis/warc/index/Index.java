@@ -80,6 +80,10 @@ public class Index implements AutoCloseable {
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
   
+  public Index() {
+    this(DEFAULT_PORT);
+  }
+  
   public Index(final int port) {
     this.client = new RestHighLevelClient(RestClient.builder(
         new HttpHost("localhost", port, "http")));

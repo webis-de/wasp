@@ -2,6 +2,7 @@ package de.webis.warc.index;
 
 import org.apache.lucene.search.join.ScoreMode;
 import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.Operator;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.RangeQueryBuilder;
@@ -97,12 +98,12 @@ public class Query {
   
   protected QueryBuilder getTermQueryBuilder() {
     BoolQueryBuilder termQueryBuilder = QueryBuilders.boolQuery();
-    for (final String term : this.terms.split("\\s+")) {
-      termQueryBuilder = termQueryBuilder.should(
-          QueryBuilders.termQuery(Index.FIELD_CONTENT_NAME, term));
-      termQueryBuilder = termQueryBuilder.should(
-          QueryBuilders.termQuery(Index.FIELD_TITLE_NAME, term).boost(2.0f));
-    }
+    termQueryBuilder = termQueryBuilder.should(
+        QueryBuilders.matchQuery(Index.FIELD_CONTENT_NAME, this.getTerms())
+        .operator(Operator.AND));
+    termQueryBuilder = termQueryBuilder.should(
+        QueryBuilders.matchQuery(Index.FIELD_TITLE_NAME, this.getTerms())
+        .operator(Operator.AND).boost(2.0f));
     return termQueryBuilder;
   }
   

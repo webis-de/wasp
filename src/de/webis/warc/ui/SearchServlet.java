@@ -1,6 +1,7 @@
 package de.webis.warc.ui;
 
 import java.io.IOException;
+import java.util.List;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -9,15 +10,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.joda.time.DateTimeZone;
 import org.joda.time.Instant;
 
 import de.webis.warc.index.Index;
 import de.webis.warc.index.Query;
+import de.webis.warc.index.Result;
 import de.webis.warc.index.ResultPages;
 
 public class SearchServlet extends HttpServlet {
 
   private static final long serialVersionUID = -5259242888271066638L;
+  
+  public static final String SERVLET_PATH = "search";
   
   public static final String INIT_PARAMETER_INDEX_PORT = "index.port";
 
@@ -40,6 +45,8 @@ public class SearchServlet extends HttpServlet {
   public static final String REQUEST_PARAMETER_FROM = "from";
   
   public static final String REQUEST_PARAMETER_TO = "to";
+  
+  public static final String REQUEST_PARAMETER_TIMEZONE = "timezone";
   
   public static final String REQUEST_PARAMETER_PAGE_NUMBER = "page";
 
@@ -78,13 +85,18 @@ public class SearchServlet extends HttpServlet {
   throws ServletException, IOException {
     response.setContentType("text/html");
     final Query query = this.getQuery(request);
+    final DateTimeZone timezone = this.getClientTimezone(request);
     if (query == null) {
-      this.renderer.render(response.getWriter());
+      this.renderer.render(
+          response.getWriter(), request.getLocale(), timezone);
     } else {
       final ResultPages results = this.getResults(request, query);
       final int pageNumber = this.getPageNumber(request);
+      final List<Result> resultList = results.getPage(pageNumber);
+      final boolean isLastPage = resultList.size() < this.pageSize;
       this.renderer.render(response.getWriter(),
-          query, results.getPage(pageNumber), pageNumber);
+          query, resultList, pageNumber, isLastPage,
+          request.getLocale(), timezone);
     }
   };
   
@@ -92,11 +104,14 @@ public class SearchServlet extends HttpServlet {
     final String terms = request.getParameter(REQUEST_PARAMETER_TERMS);
     if (terms == null) { return null; }
 
+    final DateTimeZone timezone = this.getClientTimezone(request);
     final Query query = Query.of(terms);
-    final String from = request.getParameter(REQUEST_PARAMETER_FROM);
-    if (from != null) { query.from(Instant.parse(from)); }
-    final String to = request.getParameter(REQUEST_PARAMETER_TO);
-    if (to != null) { query.to(Instant.parse(to)); }
+    final Instant from = this.parseInstantFromGet(
+        request.getParameter(REQUEST_PARAMETER_FROM), timezone);
+    if (from != null) { query.from(from); }
+    final Instant to = this.parseInstantFromGet(
+        request.getParameter(REQUEST_PARAMETER_TO), timezone);
+    if (to != null) { query.to(to); }
 
     final HttpSession session = request.getSession();
     synchronized (session) {
@@ -106,6 +121,27 @@ public class SearchServlet extends HttpServlet {
         session.removeAttribute(SESSION_RESULTS);
       }
       return query;
+    }
+  }
+  
+  protected DateTimeZone getClientTimezone(
+      final HttpServletRequest request) {
+    final String value = request.getParameter(REQUEST_PARAMETER_TIMEZONE);
+    if (value == null) {
+      return DateTimeZone.getDefault();
+    } else {
+      return DateTimeZone.forID(value);
+    } 
+  }
+  
+  protected Instant parseInstantFromGet(
+      final String getParameter, final DateTimeZone timezone) {
+    if (getParameter == null || getParameter.isEmpty()) {
+      return null;
+    } else {
+      final Instant instant = Instant.parse(getParameter,
+          ResultPageRenderer.DATE_TIME_PICKER_FORMATTER.withZone(timezone));
+      return instant;
     }
   }
   
