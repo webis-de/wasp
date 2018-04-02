@@ -5,23 +5,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ResultPages {
+public class CachingResultsFetcher extends ResultsFetcher {
   
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
   /////////////////////////////////////////////////////////////////////////////
-  
-  protected final ResultsFetcher fetcher;
   
   protected final List<List<Result>> results;
   
   /////////////////////////////////////////////////////////////////////////////
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
-  
-  public ResultPages(final ResultsFetcher fetcher) {
-    if (fetcher == null) { throw new NullPointerException("resultsfetcher"); }
-    this.fetcher = fetcher;
+
+  public CachingResultsFetcher(
+      final Index index, final Query query, final int pageSize) {
+    super(index, query, pageSize);
     this.results = new ArrayList<>();
   }
   
@@ -29,7 +27,8 @@ public class ResultPages {
   // FUNCTIONALITY
   /////////////////////////////////////////////////////////////////////////////
   
-  public List<Result> getPage(final int pageNumber)
+  @Override
+  public List<Result> fetch(final int pageNumber)
   throws IOException {
     final int pageIndex = pageNumber - 1;
     while (this.results.size() < pageIndex) {
@@ -39,7 +38,7 @@ public class ResultPages {
     if (this.results.size() <= pageIndex
         || this.results.get(pageIndex) == null) {
       this.results.add(pageIndex,
-          Collections.unmodifiableList(this.fetcher.fetch(pageNumber)));
+          Collections.unmodifiableList(super.fetch(pageNumber)));
     }
     return this.results.get(pageIndex);
   }

@@ -211,8 +211,8 @@ public class Index implements AutoCloseable {
   /////////////////////////////////////////////////////////////////////////////
   // QUERY
   
-  public ResultPages query(final Query query, final int pageSize) {
-    return new ResultPages(new ResultsFetcher(this, query, pageSize));
+  public ResultsFetcher query(final Query query, final int pageSize) {
+    return new ResultsFetcher(this, query, pageSize);
   }
   
   protected SearchResponse search(final SearchRequest searchRequest)

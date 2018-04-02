@@ -1,3 +1,61 @@
-div {
-	color: red;
+/* query box */
+.datetime-form .date .btn {
+  width: 10rem;
+  
+}
+.datetime-form .date span.btn {
+  width: 7rem;
+  text-align: left;
+  background-color: #eee;
+  border-color: #ccc;
+  color: black;
+}
+.datetime-form .date span.btn:hover {
+	z-index: default;
+	cursor: default;
+}
+.input-group.date {
+  margin-bottom: 0.25rem;
+}
+
+/* current query */
+.current-query {
+  margin-bottom: 1rem;
+}
+
+/* result */
+.query {
+  font-weight: bold;
+}
+
+.results {
+  list-style-type: none;
+}
+li.result {
+  margin-bottom: 2rem;
+}
+li.result .title {
+  font-size: 18px;
+  display: block;
+  margin-bottom: -0.5rem;
+}
+li.result .meta {
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+}
+li.result .meta .uri, li.result .meta time {
+  display: flex-item;
+}
+li.result .meta time::before {
+  content: "@";
+}
+li.result .snippet {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+/* footer */
+nav.footer {
+  text-align: center;
 }

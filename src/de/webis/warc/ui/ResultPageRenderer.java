@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import org.apache.commons.text.StringEscapeUtils;
 import org.joda.time.DateTimeZone;
@@ -22,6 +23,8 @@ public class ResultPageRenderer {
   
   public static final DateTimeFormatter DATE_TIME_PICKER_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm");
+  
+  public static final int MAX_URI_LENGTH = 80;
   
   protected final int replayPort;
   
@@ -53,7 +56,7 @@ public class ResultPageRenderer {
       final Locale locale, final DateTimeZone timezone) {
     this.renderHeader(output, locale, query);
     this.renderQueryBox(output, query, timezone);
-    this.renderQueryConfirmation(output, query, timezone);
+    this.renderQueryConfirmation(output, query, pageNumber, timezone);
     output.append("<ol class='results'>\n");
     for (final Result result : page) {
       this.renderResult(output, result, timezone);
@@ -76,18 +79,27 @@ public class ResultPageRenderer {
         "  <link rel='stylesheet' href='css/bootstrap-datetimepicker.min.css'/>" +
         "  <link rel='stylesheet' href='css/search.css'/>" +
         "</head>\n" +
-        "<body>\n",
+        "<body>\n" +
+        "<nav class='navbar navbar-default'>\n" +
+        "  <div class='container>\n'" +
+        "    <div class='navbar-header'>\n" +
+        "      <a class='navbar-brand' href='#'>Web Archive Search Personalized</a>\n" +
+        "    </div>\n" +
+        "  </div>\n" +
+        "</nav>\n" +
+        "<div class='container'>\n",
         locale, title
     ));
   }
   
   protected void renderFooter(final PrintWriter output) {
     output.append(
+        "</div>\n" +
         "<script type='text/javascript' src='js/jquery.min.js'></script>\n" +
         "<script type='text/javascript' src='js/moment.min.js'></script>\n" +
         "<script type='text/javascript' src='js/bootstrap.min.js'></script>\n" +
         "<script type='text/javascript' src='js/bootstrap-datetimepicker.min.js'></script>\n" +
-        "<script type='text/javascript' src='js/localize-time.js'></script>\n" +
+        "<script type='text/javascript' src='js/search.js'></script>\n" +
         "</body>\n"
     );
     output.flush();
@@ -110,43 +122,62 @@ public class ResultPageRenderer {
     
     output.append(String.format(
         "<form method='GET' class='form-group'>\n" +
-        "  <input type='text' name='terms' placeholder='query' value='%s'/>\n" +
-        "  <div class='input-group date'>\n" +
-        "    <input type='text' class='form-control 'name='from' value='%s' placeholder='from'>\n" +
-        "    <span class='input-group-addon'>\n" +
-        "      <span class='glyphicon glyphicon-calendar'></span>\n" +
-        "    </span>\n" +
+        "  <div class='datetime-form'>\n" +
+        "    <div class='input-group date'>\n" +
+        "      <span class='input-group-btn' data-button-target-name='from'>\n" +
+        "        <span class='btn btn-primary disabled'>From:</span>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset=''>beginning</button>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset='months' data-time-offset-amount='1'>month ago</button>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset='weeks' data-time-offset-amount='1'>week ago</button>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset='days' data-time-offset-amount='1'>day ago</button>\n" +
+        "      </span>\n" +
+        "      <input type='text' class='form-control' name='from' value='%s' placeholder='beginning'>\n" +
+        "      <span class='input-group-addon'>\n" +
+        "        <span class='glyphicon glyphicon-calendar'></span>\n" +
+        "      </span>\n" +
+        "    </div>\n" +
+        "    <div class='input-group date'>\n" +
+        "      <span class='input-group-btn' data-button-target-name='to'>\n" +
+        "        <span class='btn btn-primary disabled'>Until:</span>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset='months' data-time-offset-amount='1'>month ago</button>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset='weeks' data-time-offset-amount='1'>week ago</button>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset='days' data-time-offset-amount='1'>day ago</button>\n" +
+        "        <button type='button' class='btn btn-default' data-time-offset=''>now</button>\n" +
+        "      </span>\n" +
+        "      <input type='text' class='form-control' name='to' value='%s' placeholder='now'>\n" +
+        "      <span class='input-group-addon'>\n" +
+        "        <span class='glyphicon glyphicon-calendar'></span>\n" +
+        "      </span>\n" +
+        "    </div>\n" +
         "  </div>\n" +
-        "  <div class='input-group date'>\n" +
-        "    <input type='text' class='form-control 'name='to' value='%s' placeholder='to'>\n" +
-        "    <span class='input-group-addon'>\n" +
-        "      <span class='glyphicon glyphicon-calendar'></span>\n" +
+        "  <div class='input-group'>\n" +
+        "    <input type='text' class='form-control' name='terms' placeholder='Query' value='%s'/>\n" +
+        "    <span class='input-group-btn'>\n" +
+        "      <button type='submit' class='btn btn-primary'>Go!</button>\n" +
         "    </span>\n" +
         "  </div>\n" +
         "  <input type='hidden' name='timezone'/>\n" +
-        "  <button type='submit'>Go!</button>" +
         "</form>\n",
-        terms, from , to
+        from , to, terms
     ));
   }
   
   protected void renderQueryConfirmation(
       final PrintWriter output, final Query query,
-      final DateTimeZone timezone) {
+      final int pageNumber, final DateTimeZone timezone) {
     output.append(String.format(
         "<div class='current-query'>\n" +
-        "  Results for query '<span class='query'>%s</span>'\n",
-        StringEscapeUtils.escapeHtml4(query.getTerms())));
-    if (query.getFrom() != null) {
-      output.append(String.format("  from %s\n",
-          this.getHtmlTime(query.getFrom(), timezone)));
-    }
-    if (query.getTo() != null) {
-      output.append(String.format("  until %s\n",
-          this.getHtmlTime(query.getTo(), timezone)));
-    }
-    output.append(
-        "</div>\n");
+        "  Page <span class='page-number'>%d</span>\n" +
+        "  for '<em class='query'>%s</em>'\n" +
+        "  from %s\n" +
+        "  until %s\n" +
+        "</div>\n",
+        pageNumber,
+        StringEscapeUtils.escapeHtml4(query.getTerms()),
+        query.getFrom() == null ? "beginning"
+            : this.getHtmlTime(query.getFrom(), timezone),
+        query.getTo() == null ? "now"
+            : this.getHtmlTime(query.getTo(), timezone)));
   }
   
   protected void renderResult(
@@ -154,37 +185,74 @@ public class ResultPageRenderer {
       final DateTimeZone timezone) {
     output.append(String.format(
         "<li class='result'>\n" +
-        "  <span class='title'><a href='%s'>%s</a></span><br/>\n" +
-        "  <span class='uri'>%s</span> %s<br/>\n" +
+        "  <span class='title'><a href='%s'>%s</a></span>\n" +
+        "  <span class='meta'><span class='uri'>%s</span> %s</span>\n" +
         "  <span class='snippet'>%s</span>\n" +
         "</li>\n",
         this.getReplayUri(result),
         StringEscapeUtils.escapeHtml4(result.getTitle()),
-        StringEscapeUtils.escapeHtml4(result.getUri()),
+        this.processUri(result.getUri()),
         this.getHtmlTime(result.getInstant(), timezone),
-        StringEscapeUtils.escapeHtml4(result.getSnippet())));
+        this.processSnippet(result.getSnippet())));
+  }
+  
+  protected String processUri(final String uri) {
+    final String htmlEscaped =
+        StringEscapeUtils.escapeHtml4(uri);
+    if (htmlEscaped.length() <= MAX_URI_LENGTH) {
+      return htmlEscaped;
+    } else {
+      final int splitIndex = (MAX_URI_LENGTH - 3) / 2;
+      return htmlEscaped.substring(0, splitIndex) + "..." + 
+          htmlEscaped.substring(htmlEscaped.length() - splitIndex);
+    }
+  }
+  
+  protected String processSnippet(final String snippet) {
+    final String htmlEscaped =
+        StringEscapeUtils.escapeHtml4(snippet);
+    final Pattern highlightStartPattern = Pattern.compile("&lt;em&gt;");
+    final String startUnescaped =
+        highlightStartPattern.matcher(htmlEscaped).replaceAll(
+            "<em class='query'>");
+    final Pattern highlightEndPattern = Pattern.compile("&lt;/em&gt;");
+    return highlightEndPattern.matcher(startUnescaped).replaceAll("</em>");
   }
   
   protected void renderPagination(
       final PrintWriter output, final Query query,
-      final int pageNumber, final boolean isLastPage
-      , final DateTimeZone timezone) {
+      final int pageNumber, final boolean isLastPage,
+      final DateTimeZone timezone) {
     final String hrefPrefix = this.getPaginationHrefPrefix(query, timezone);
 
-    output.append("<ol class='pagination'>\n");
+    output.append(
+        "<nav class='footer'>\n" +
+        "  <ul class='pagination'>\n"
+    );
+    output.append(String.format(
+        "    <li class='%s'><a href='%s'>&laquo;</a></li>\n",
+        pageNumber == 1 ? "disabled" : "",
+        pageNumber == 1 ? "#" : hrefPrefix + (pageNumber - 1)));
     for (int p = 1; p < pageNumber; ++p) {
       output.append(String.format(
-          "  <li class='page'><a href='%s'>%d</a></li>\n",
+          "    <li class='page'><a href='%s'>%d</a></li>\n",
           hrefPrefix + p, p));
     }
     output.append(String.format(
-        "  <li class='page active'>%d</li>\n", pageNumber));
+        "    <li class='page active'><a href='#'>%d</a></li>\n", pageNumber));
     if (!isLastPage) {
       output.append(String.format(
-          "  <li class='page'><a href='%s'>%d</a></li>\n",
+          "    <li class='page'><a href='%s'>%d</a></li>\n",
           hrefPrefix + (pageNumber + 1), pageNumber + 1));
     }
-    output.append("</ol>\n");
+    output.append(String.format(
+        "    <li class='%s'><a href='%s'>&raquo;</a></li>\n",
+        isLastPage ? "disabled" : "",
+        isLastPage ? "#" : hrefPrefix + (pageNumber + 1)));
+    output.append(
+        "  </ul>\n" +
+        "</nav>"
+    );
   }
   
   protected String getTitle(final Query query) {

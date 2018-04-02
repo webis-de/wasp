@@ -16,7 +16,7 @@ import org.joda.time.Instant;
 import de.webis.warc.index.Index;
 import de.webis.warc.index.Query;
 import de.webis.warc.index.Result;
-import de.webis.warc.index.ResultPages;
+import de.webis.warc.index.ResultsFetcher;
 
 public class SearchServlet extends HttpServlet {
 
@@ -90,9 +90,9 @@ public class SearchServlet extends HttpServlet {
       this.renderer.render(
           response.getWriter(), request.getLocale(), timezone);
     } else {
-      final ResultPages results = this.getResults(request, query);
+      final ResultsFetcher results = this.getResults(request, query);
       final int pageNumber = this.getPageNumber(request);
-      final List<Result> resultList = results.getPage(pageNumber);
+      final List<Result> resultList = results.fetch(pageNumber);
       final boolean isLastPage = resultList.size() < this.pageSize;
       this.renderer.render(response.getWriter(),
           query, resultList, pageNumber, isLastPage,
@@ -145,12 +145,12 @@ public class SearchServlet extends HttpServlet {
     }
   }
   
-  protected ResultPages getResults(
+  protected ResultsFetcher getResults(
       final HttpServletRequest request, final Query query)
   throws IOException {
     final HttpSession session = request.getSession();
     synchronized (session) {
-      ResultPages results = (ResultPages) session.getAttribute(SESSION_RESULTS);
+      ResultsFetcher results = (ResultsFetcher) session.getAttribute(SESSION_RESULTS);
       if (results == null) {
         results =  this.index.query(query, this.pageSize);
         session.setAttribute(SESSION_RESULTS, results);
