@@ -185,7 +185,7 @@ public class WarcIndexer implements Consumer<WarcRecord> {
     logger.addHandler(handler);
     logger.setLevel(Level.FINE);
     
-    final Path directory = Paths.get("/home/dogu3912/tmp/warcprox/archive");
+    final Path directory = Paths.get(args[0]);
     final int port =
         args.length != 2 ? Index.DEFAULT_PORT : Integer.parseInt(args[1]);
     try (final Index index = new Index(port)) {

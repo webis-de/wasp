@@ -9,6 +9,8 @@ import org.eclipse.jetty.util.resource.ResourceCollection;
 
 public class SearchService extends Thread {
   
+  public static final int DEFAULT_PORT = 8003;
+  
   protected final ServletHolder servletHolder;
   
   protected final int port;
@@ -53,7 +55,8 @@ public class SearchService extends Thread {
   }
   
   public static void main(final String[] args) {
-    final SearchService service = new SearchService(8003);
+    final int port = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_PORT;
+    final SearchService service = new SearchService(port);
     service.run();
   }
 

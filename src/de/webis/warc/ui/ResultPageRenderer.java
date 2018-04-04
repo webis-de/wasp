@@ -73,15 +73,15 @@ public class ResultPageRenderer {
         "<!DOCTYPE html>\n" +
         "<html lang='en'>\n" +
         "<head data-accept-language='%s'>\n" +
-        "  <meta charset='utf-8'/>" +
-        "  <title>%s</title>" +
-        "  <link rel='stylesheet' href='css/bootstrap.min.css'/>" +
-        "  <link rel='stylesheet' href='css/bootstrap-datetimepicker.min.css'/>" +
-        "  <link rel='stylesheet' href='css/search.css'/>" +
+        "  <meta charset='utf-8'/>\n" +
+        "  <title>%s</title>\n" +
+        "  <link rel='stylesheet' href='css/bootstrap.min.css'/>\n" +
+        "  <link rel='stylesheet' href='css/bootstrap-datetimepicker.min.css'/>\n" +
+        "  <link rel='stylesheet' href='css/search.css'/>\n" +
         "</head>\n" +
         "<body>\n" +
         "<nav class='navbar navbar-default'>\n" +
-        "  <div class='container>\n'" +
+        "  <div class='container'>\n" +
         "    <div class='navbar-header'>\n" +
         "      <a class='navbar-brand' href='#'>Web Archive Search Personalized</a>\n" +
         "    </div>\n" +

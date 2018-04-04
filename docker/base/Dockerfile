@@ -6,24 +6,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install virtualenv
 
-RUN mkdir -p /srv/warcprox /srv/pywb /srv/elasticsearch /srv/wasp
+RUN useradd -ms /bin/bash user
+USER user
 
-WORKDIR /srv/warcprox
+RUN mkdir -p /home/user/srv/warcprox /home/user/srv/pywb /home/user/srv/elasticsearch
+
+WORKDIR /home/user/srv/warcprox
 RUN virtualenv env
 RUN /bin/bash -c "source env/bin/activate && pip install warcprox==2.3"
 
-WORKDIR /srv/pywb
+WORKDIR /home/user/srv/pywb
 RUN virtualenv env
 RUN /bin/bash -c "source env/bin/activate && pip install pywb==2.0.2 && wb-manager init archive"
-WORKDIR /srv/pywb/collections/archive
+WORKDIR /home/user/srv/pywb/collections/archive
 RUN rmdir archive
-RUN ln -s /srv/warcprox/archive
+RUN ln -s /home/user/srv/warcprox/archive
 
-WORKDIR /srv/elasticsearch
+WORKDIR /home/user/srv/elasticsearch
 RUN curl -L -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-6.2.3.tar.gz
 RUN tar xzf elasticsearch-*.tar.gz
 RUN rm elasticsearch-*.tar.gz
-RUN sed -i 's/^#path\.data.*/path.data: \/srv\/elasticsearch\/index/' elasticsearch-*/config/elasticsearch.yml
-RUN sed -i 's/^#path\.logs.*/path.logs: \/srv\/elasticsearch\/logs/' elasticsearch-*/config/elasticsearch.yml
+RUN sed -i 's/^#path\.data.*/path.data: \/home\/user\/srv\/elasticsearch\/index/' elasticsearch-*/config/elasticsearch.yml
+RUN sed -i 's/^#path\.logs.*/path.logs: \/home\/user\/srv\/elasticsearch\/logs/' elasticsearch-*/config/elasticsearch.yml
 
+WORKDIR /home/user/srv
 
