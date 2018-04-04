@@ -1,4 +1,4 @@
-FROM wasp-base
+FROM webis/wasp:base-0.0.1
 
 RUN mkdir -p /home/user/srv/warc-indexer /home/user/srv/search-service
 
