@@ -34,10 +34,21 @@
 li.result {
   margin-bottom: 2rem;
 }
-li.result .title {
-  font-size: 18px;
+li.result .links {
   display: block;
   margin-bottom: -0.5rem;
+}
+li.result .title {
+  font-size: 18px;
+}
+li.result .archive, li.result .live {
+  font-size: 12px;
+}
+li.result .archive::before, li.result .live::before {
+  content: "[";
+}
+li.result .archive::after, li.result .live::after {
+  content: "]";
 }
 li.result .meta {
   font-size: 12px;

@@ -16,24 +16,58 @@ import org.joda.time.format.DateTimeFormatter;
 import de.webis.warc.index.Query;
 import de.webis.warc.index.Result;
 
+/**
+ * Renders the user interface for the search service.
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ *
+ */
 public class ResultPageRenderer {
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // CONSTANTS
+  /////////////////////////////////////////////////////////////////////////////
   
   protected static final DateTimeFormatter REPLAY_FORMATTER =
       DateTimeFormat.forPattern("yyyyMMddHHmmss");
   
-  public static final DateTimeFormatter DATE_TIME_PICKER_FORMATTER =
+  protected static final DateTimeFormatter DATE_TIME_PICKER_FORMATTER =
       DateTimeFormat.forPattern("yyyy-MM-dd HH:mm");
   
-  public static final int MAX_URI_LENGTH = 80;
+  protected static final int MAX_URI_DISPLAY_LENGTH = 60;
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // MEMBERS
+  /////////////////////////////////////////////////////////////////////////////
   
   protected final int replayPort;
   
   protected final String replayCollection;
   
+  /////////////////////////////////////////////////////////////////////////////
+  // CONSTRUCTORS
+  /////////////////////////////////////////////////////////////////////////////
+  
+  /**
+   * Creates a new renderer.
+   * <p>
+   * It uses {@link SearchServlet#DEFAULT_REPLAY_PORT} and
+   * {@link SearchServlet#DEFAULT_REPLAY_COLLECTION} for the corresponding
+   * parameters.
+   * </p>
+   * @see #ResultPageRenderer(int, String)
+   */
   public ResultPageRenderer() {
-    this(SearchServlet.DEFAULT_REPLAY_PORT, SearchServlet.DEFAULT_REPLAY_COLLECTION);
+    this(
+        SearchServlet.DEFAULT_REPLAY_PORT,
+        SearchServlet.DEFAULT_REPLAY_COLLECTION);
   }
   
+  /**
+   * Creates a new renderer that refers to the replay server at given port.
+   * @param replayPort The port at which the replay server listens
+   * @param replayCollection The collection of the replay server to use
+   */
   public ResultPageRenderer(
       final int replayPort, final String replayCollection) {
     if (replayCollection == null) {
@@ -42,14 +76,35 @@ public class ResultPageRenderer {
     this.replayPort = replayPort;
     this.replayCollection = replayCollection;
   }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // FUNCTIONALITY
+  /////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Render the search page without a specific query.
+   * @param output Where to write the page to
+   * @param locale Locale of the user client
+   * @param timezone Time zone of the user client
+   */
   public void render(final PrintWriter output,
       final Locale locale, final DateTimeZone timezone) {
     this.renderHeader(output, locale, null);
     this.renderQueryBox(output, null, timezone);
     this.renderFooter(output);
   }
-  
+
+  /**
+   * Render the search page with results for a specific query.
+   * @param output Where to write the page to
+   * @param query The query that produced the results
+   * @param page The results for the query and the current result page number
+   * @param pageNumber Number of the current page in the result list
+   * @param isLastPage Whether the current page is the last page in the result
+   * list
+   * @param locale Locale of the user client
+   * @param timezone Time zone of the user client
+   */
   public void render(final PrintWriter output,
       final Query query,
       final List<Result> page, final int pageNumber, final boolean isLastPage,
@@ -65,6 +120,10 @@ public class ResultPageRenderer {
     this.renderPagination(output, query, pageNumber, isLastPage, timezone);
     this.renderFooter(output);
   }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // HELPERS
+  /////////////////////////////////////////////////////////////////////////////
   
   protected void renderHeader(final PrintWriter output,
       final Locale locale, final Query query) {
@@ -183,26 +242,32 @@ public class ResultPageRenderer {
   protected void renderResult(
       final PrintWriter output, final Result result,
       final DateTimeZone timezone) {
+    final String title = StringEscapeUtils.escapeHtml4(result.getTitle());
+    final String replayUri = this.getReplayUri(result);
+    final String liveUri = result.getUri();
+
     output.append(String.format(
         "<li class='result'>\n" +
-        "  <span class='title'><a href='%s'>%s</a></span>\n" +
+        "  <div class='links'>\n" +
+        "    <a href='%s' class='title'>%s</a>\n" +
+        "    <a href='%s' class='archive'>archive</a>\n" +
+        "    <a href='%s' class='live'>live</a>\n" +
         "  <span class='meta'><span class='uri'>%s</span> %s</span>\n" +
         "  <span class='snippet'>%s</span>\n" +
         "</li>\n",
-        this.getReplayUri(result),
-        StringEscapeUtils.escapeHtml4(result.getTitle()),
-        this.processUri(result.getUri()),
+        replayUri, title, replayUri, liveUri,
+        this.getDisplayUri(result.getUri()),
         this.getHtmlTime(result.getInstant(), timezone),
         this.processSnippet(result.getSnippet())));
   }
   
-  protected String processUri(final String uri) {
+  protected String getDisplayUri(final String uri) {
     final String htmlEscaped =
         StringEscapeUtils.escapeHtml4(uri);
-    if (htmlEscaped.length() <= MAX_URI_LENGTH) {
+    if (htmlEscaped.length() <= MAX_URI_DISPLAY_LENGTH) {
       return htmlEscaped;
     } else {
-      final int splitIndex = (MAX_URI_LENGTH - 3) / 2;
+      final int splitIndex = (MAX_URI_DISPLAY_LENGTH - 3) / 2;
       return htmlEscaped.substring(0, splitIndex) + "..." + 
           htmlEscaped.substring(htmlEscaped.length() - splitIndex);
     }
