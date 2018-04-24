@@ -1,27 +1,25 @@
 # WASP
-
+WASP, is a fully functional prototype of a personal web archive and search system.
 
 
 ## Quickstart
 You need to have [Docker](https://docker.io) installed on your system. You can then immediately start WASP like this:
 ```
-docker run -p 8001:8001 -p 8002:8002 -p 8003:8003 --name wasp -it webis/wasp:0.2.0
+docker run -p 8001:8001 -p 8002:8002 -p 8003:8003 --name wasp -d webis/wasp:0.2.0
 ```
 Depending on your Docker setup, you might need to run this command as an administrator or add ```sudo``` in front of it.
 
-This will start the container attached to the current terminal. You can use CTRL-C to stop the container.
+After a few seconds, you should already see the search interface in your browser at (http://localhost:8003/search)
 
-As long as the container is running, you should already see the search interface in your browser:
+Next, you will have to change the proxy settings of your browser to route the requests and responses through it. How this can be done depends on the browser ([Chrome](https://support.mozilla.org/en-US/kb/connection-settings-firefox), [Edge](https://www.rogers.com/customer/support/article/set-up-proxy-settings-in-microsoft-edge), [Firefox](https://support.mozilla.org/en-US/kb/connection-settings-firefox), [Opera](https://customers.trustedproxies.com/knowledgebase.php?action=displayarticle&id=40), [Safari](https://support.apple.com/kb/PH21420?locale=en_US)). However, also consider using a tailored proxy switching plugin for your browser, which allows you to disable/enable WASP easily. In all cases, you need to specify (localhost:8001) as proxy for HTTP and HTTPS and have "localhost" as an exception (often so by default).
 
-  http://localhost:8003/search
+Now it is time to clear your browser's cache (or use incognito mode). Otherwise you will be disappointed when some elements are missing in the archive.
 
+You are already set up to use WASP for HTTP connections. For HTTP*S* connections, you have to trust WASP to identify foreign web pages for you. This can be done either by trusting the certificate of WASP's [warcprox](https://github.com/internetarchive/warcprox) instance in your browser (you can get it with ```docker cp wasp:/home/user/srv/warcprox/warcprox-ca.pem .```, then look at your browser's help page on how to import it), or by disabling the security check in your browser (e.g., you can start Chrome with *--ignore-certificate-errors*).
 
+And that's it! Now all your traffic should be archived, indexed, and searchable immediately.
 
-Next, you will have to change the proxy settings of your browser to route the requests and responses through it. How this can be done depends on the browser. I think it is easiest in Firefox. Chrome uses just the system settings. In both cases you should open the settings and search for proxy. Chrome will just open the system dialog for setting a proxy. You need the following proxy for HTTP and HTTPS:
-
-  localhost:8001
-
-And have "localhost" as an exception (often so by default). 
+You can then stop the container using ```sudo docker stop wasp``` and start it again with ```sudo docker start wasp```. Note that your archive is stored in the container. If you remove the container, your archive is gone.
 
 
 ## Docker
