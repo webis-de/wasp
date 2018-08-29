@@ -19,7 +19,7 @@ You are already set up to use WASP for HTTP connections. For HTTP*S* connections
 
 And that's it! Now all your traffic should be archived, indexed, and searchable immediately.
 
-You can then stop the container using ```sudo docker stop wasp``` and start it again with ```sudo docker start wasp```. Note that your archive is stored in the container. If you remove the container, your archive is gone.
+You can then stop the container using ```docker stop wasp``` and start it again with ```docker start wasp```. Note that your archive is stored in the container. If you remove the container, your archive is gone.
 
 
 ## Docker
