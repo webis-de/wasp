@@ -14,7 +14,7 @@ Next, you will have to change the proxy settings of your browser to route the re
 
 Now it is time to clear your browser's cache (or use incognito mode). Otherwise you will be disappointed when some elements are missing in the archive.
 
-You are already set up to use WASP for HTTP connections. For HTTP*S* connections, you have to trust WASP to identify foreign web pages for you. This can be done either by trusting the certificate of WASP's [warcprox](https://github.com/internetarchive/warcprox) instance in your browser (you can get it with ```docker cp wasp:/home/user/srv/warcprox/warcprox-ca.pem .```, then look at your browser's help page on how to import it), or by disabling the security check in your browser (e.g., you can start Chrome with *--ignore-certificate-errors*).
+You are already set up to use WASP for HTTP connections. For HTTP*S* connections, you have to trust WASP to identify foreign web pages for you. This can be done either by trusting the certificate of WASP's [warcprox](https://github.com/internetarchive/warcprox) instance in your browser (you can get it with ```docker cp wasp:/home/user/srv/warcprox/warcprox-ca.pem .```, then look at your browser's help page on how to import it), or by disabling the security check in your browser (e.g., you can start Chrome with *--ignore-certificate-errors*). See additional instructions for [firefox on windows 10](ffwin10.md) if needed.
 
 NOTE: Above instructions for HTTPS disable some security features of your browser. Do this for testing the technology, but do *not* use WASP for web pages where you are concerned about security or privacy.
 
