@@ -25,3 +25,8 @@ You can then stop the container using ```docker stop wasp``` and start it again 
 
 ## Docker
 A pre-build Docker image of WASP is available on [dockerhub](https://hub.docker.com/r/webis/wasp/).
+
+
+## Troubleshooting
+  - The search page never retrieves results/does not show new results!
+      - WASP currently uses the default Elastic Search settings which turn the index read-only once your disk reaches 95% of used space. Since the index is (if you did not reconfigure that) stored on your root partition, you might need to clean up there.
