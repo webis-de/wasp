@@ -1,4 +1,4 @@
-package de.webis.warc.ui;
+package de.webis.wasp.ui;
 
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.text.StringEscapeUtils;
 
-import de.webis.warc.index.Query;
-import de.webis.warc.index.Result;
+import de.webis.wasp.index.Query;
+import de.webis.wasp.index.Result;
 
 /**
  * Renders the user interface for the search service.

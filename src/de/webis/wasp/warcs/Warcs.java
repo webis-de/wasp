@@ -1,4 +1,4 @@
-package de.webis.warc;
+package de.webis.wasp.warcs;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -44,7 +44,6 @@ import edu.cmu.lemurproject.WarcRecord;
  * @author johannes.kiesel@uni-weimar.de
  *
  */
-//@SuppressWarnings("deprecation")
 public class Warcs {
   
   public static final String HEADER_ID = "WARC-Record-ID";
@@ -113,7 +112,6 @@ public class Warcs {
     return record.getHeaderMetadataItem(header);
   }
 
-  
   public static String getId(final WarcRecord record) {
     return Warcs.getHeader(record, HEADER_ID);
   }

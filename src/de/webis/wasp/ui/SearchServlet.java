@@ -1,14 +1,14 @@
-package de.webis.warc.ui;
+package de.webis.wasp.ui;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.TimeZone;
 
-import de.webis.warc.index.Index;
-import de.webis.warc.index.Query;
-import de.webis.warc.index.Result;
-import de.webis.warc.index.ResultsFetcher;
+import de.webis.wasp.index.Index;
+import de.webis.wasp.index.Query;
+import de.webis.wasp.index.Result;
+import de.webis.wasp.index.ResultsFetcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;

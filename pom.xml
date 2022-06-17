@@ -24,7 +24,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>de.webis.warc.ui.SearchService</mainClass>
+              <mainClass>de.webis.wasp.SearchService</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>

@@ -1,4 +1,4 @@
-package de.webis.warc.index;
+package de.webis.wasp.index;
 
 import java.io.IOException;
 import java.io.StringReader;

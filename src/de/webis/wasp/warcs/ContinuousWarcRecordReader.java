@@ -1,4 +1,4 @@
-package de.webis.warc.read;
+package de.webis.wasp.warcs;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,8 +12,8 @@ import java.util.logging.Logger;
 import edu.cmu.lemurproject.WarcRecord;
 
 /**
- * A {@link WarcReader} that will wait for new content even when it reached the
- * end of the archive.
+ * A {@link WarcRecordReader} that will wait for new content even when it
+ * reached the end of the archive.
  * <p>
  * This class should be used for archives that are still filled. When you use
  * {@link #close()}, this reader will still continue to read until it
@@ -23,14 +23,14 @@ import edu.cmu.lemurproject.WarcRecord;
  * @author johannes.kiesel@uni-weimar.de
  *
  */
-public class OpenWarcReader extends WarcReader {
+public class ContinuousWarcRecordReader extends WarcRecordReader {
 
   /////////////////////////////////////////////////////////////////////////////
   // LOGGING
   /////////////////////////////////////////////////////////////////////////////
   
   private static final Logger LOG =
-      Logger.getLogger(OpenWarcReader.class.getName());
+      Logger.getLogger(ContinuousWarcRecordReader.class.getName());
 
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
@@ -56,7 +56,7 @@ public class OpenWarcReader extends WarcReader {
    * in this interval to check when it has more content 
    * @throws IOException When the file can not be opened
    */
-  public OpenWarcReader(
+  public ContinuousWarcRecordReader(
       final Path inputFile, final boolean consumeExistingRecords,
       final Consumer<WarcRecord> consumer,
       final long pollIntervalMillis)
@@ -68,11 +68,11 @@ public class OpenWarcReader extends WarcReader {
   }
   
   @Override
-  protected FileInputStream openFileInputStream(final Path inputFile)
+  protected FileInputStream openFileInputStream()
   throws IOException {
-    final File file = inputFile.toFile();
-    LOG.fine("Open file: " + inputFile);
-    return new OpenFileInputStream(file);
+    final File file = this.getInputFile().toFile();
+    LOG.fine("Open file: " + file);
+    return new ContinuousFileInputStream(file);
   }
   
   /////////////////////////////////////////////////////////////////////////////
@@ -81,14 +81,14 @@ public class OpenWarcReader extends WarcReader {
   
   @Override
   public void close() throws IOException {
-    LOG.fine("Closing " + this.inputFile);
+    LOG.fine("Closing " + this.getInputFile());
     this.closed = true;
   }
   
   @Override
   protected void consume(final WarcRecord record) {
     if (this.consume) {
-      super.consume(record);
+      super.getConsumer().accept(record);
     }
   }
 
@@ -106,9 +106,10 @@ public class OpenWarcReader extends WarcReader {
    *
    * @author johannes.kiesel@uni-weimar.de
    */
-  protected class OpenFileInputStream extends FileInputStream {
+  protected class ContinuousFileInputStream
+  extends FileInputStream {
 
-    public OpenFileInputStream(final File file)
+    public ContinuousFileInputStream(final File file)
     throws FileNotFoundException {
       super(file);
     }
@@ -117,17 +118,17 @@ public class OpenWarcReader extends WarcReader {
     public int available() throws IOException {
       int available = super.available();
       try {
-        while (available == 0 && !OpenWarcReader.this.closed) {
-          OpenWarcReader.this.consume = true;
-          Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
+        while (available == 0 && !ContinuousWarcRecordReader.this.closed) {
+          ContinuousWarcRecordReader.this.consume = true;
+          Thread.sleep(ContinuousWarcRecordReader.this.pollIntervalMillis);
           available = super.available();
         }
       } catch (final InterruptedException exception) {
         LOG.log(Level.WARNING, "Interrupted " + this, exception);
       }
       
-      if (OpenWarcReader.this.closed) {
-        OpenWarcReader.this.closeStream();
+      if (ContinuousWarcRecordReader.this.closed) {
+        ContinuousWarcRecordReader.this.closeStream();
       }
       return available;
     }
@@ -136,17 +137,17 @@ public class OpenWarcReader extends WarcReader {
     public int read() throws IOException {
       int read = super.read();
       try {
-        while (read == -1 && !OpenWarcReader.this.closed) {
-          OpenWarcReader.this.consume = true;
-          Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
+        while (read == -1 && !ContinuousWarcRecordReader.this.closed) {
+          ContinuousWarcRecordReader.this.consume = true;
+          Thread.sleep(ContinuousWarcRecordReader.this.pollIntervalMillis);
           read = super.read();
         }
       } catch (final InterruptedException exception) {
         LOG.log(Level.WARNING, "Interrupted " + this, exception);
       }
 
-      if (OpenWarcReader.this.closed) {
-        OpenWarcReader.this.closeStream();
+      if (ContinuousWarcRecordReader.this.closed) {
+        ContinuousWarcRecordReader.this.closeStream();
       }
       return read;
     }
@@ -155,17 +156,17 @@ public class OpenWarcReader extends WarcReader {
     public int read(byte b[]) throws IOException {
       int read = super.read(b);
       try {
-        while (read == -1 && !OpenWarcReader.this.closed) {
-          OpenWarcReader.this.consume = true;
-          Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
+        while (read == -1 && !ContinuousWarcRecordReader.this.closed) {
+          ContinuousWarcRecordReader.this.consume = true;
+          Thread.sleep(ContinuousWarcRecordReader.this.pollIntervalMillis);
           read = super.read(b);
         }
       } catch (final InterruptedException exception) {
         LOG.log(Level.WARNING, "Interrupted " + this, exception);
       }
 
-      if (OpenWarcReader.this.closed) {
-        OpenWarcReader.this.closeStream();
+      if (ContinuousWarcRecordReader.this.closed) {
+        ContinuousWarcRecordReader.this.closeStream();
       }
       return read;
     }
@@ -174,17 +175,17 @@ public class OpenWarcReader extends WarcReader {
     public int read(byte b[], int off, int len) throws IOException {
       int read = super.read(b, off, len);
       try {
-        while (read == -1 && !OpenWarcReader.this.closed) {
-          OpenWarcReader.this.consume = true;
-          Thread.sleep(OpenWarcReader.this.pollIntervalMillis);
+        while (read == -1 && !ContinuousWarcRecordReader.this.closed) {
+          ContinuousWarcRecordReader.this.consume = true;
+          Thread.sleep(ContinuousWarcRecordReader.this.pollIntervalMillis);
           read = super.read(b, off, len);
         }
       } catch (final InterruptedException exception) {
         LOG.log(Level.WARNING, "Interrupted " + this, exception);
       }
 
-      if (OpenWarcReader.this.closed) {
-        OpenWarcReader.this.closeStream();
+      if (ContinuousWarcRecordReader.this.closed) {
+        ContinuousWarcRecordReader.this.closeStream();
       }
       return read;
     }

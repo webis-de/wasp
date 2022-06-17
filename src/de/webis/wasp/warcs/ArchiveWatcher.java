@@ -1,4 +1,4 @@
-package de.webis.warc.read;
+package de.webis.wasp.warcs;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,7 +31,9 @@ import edu.cmu.lemurproject.WarcRecord;
  * @author johannes.kiesel@uni-weimar.de
  *
  */
-public class ArchiveWatcher extends Thread implements AutoCloseable {
+public class ArchiveWatcher
+extends Thread
+implements AutoCloseable {
   
   /////////////////////////////////////////////////////////////////////////////
   // LOGGING
@@ -44,16 +46,16 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   // MEMBERS
   /////////////////////////////////////////////////////////////////////////////
   
-  protected final Path directory;
+  private final Path directory;
   
-  protected final WatchService watchService;
+  private final WatchService watchService;
   
-  protected final Consumer<WarcRecord> consumer;
+  private final Consumer<WarcRecord> consumer;
   
-  protected WarcReader reader;
+  private WarcRecordReader reader;
   
   /////////////////////////////////////////////////////////////////////////////
-  // CONSTRUCTORS
+  // CONSTRUCTION
   /////////////////////////////////////////////////////////////////////////////
   
   /**
@@ -62,7 +64,7 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
    * @param readExistingRecords Whether records that already exist in the
    * archives in the directory should be read
    * @param consumer The consumer to which the records will be passed
-   * @throws IOException
+   * @throws IOException On reading records
    */
   public ArchiveWatcher(
       final Path directory, final boolean readExistingRecords,
@@ -76,14 +78,13 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
     this.initForDirectory(readExistingRecords);
 
     this.watchService = FileSystems.getDefault().newWatchService();
-    this.directory.register(this.watchService,
+    this.getDirectory().register(this.getWatchService(),
         StandardWatchEventKinds.ENTRY_CREATE);
   }
   
-  protected void initForDirectory(
-      final boolean readExistingRecords)
+  private void initForDirectory(final boolean readExistingRecords)
   throws IOException {
-    final File[] children = this.directory.toFile().listFiles();
+    final File[] children = this.getDirectory().toFile().listFiles();
     Arrays.sort(children, new Comparator<File>() {
       @Override
       public int compare(final File o1, final File o2) {
@@ -96,8 +97,9 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
       if (children.length >= 2) {
         for (final File child
             : Arrays.copyOfRange(children, 0, children.length - 1)) {
-          try (final WarcReader reader = new WarcReader(
-              this.directory.resolve(child.getName()), this.consumer)) {
+          try (final WarcRecordReader reader = new WarcRecordReader(
+              this.getDirectory().resolve(child.getName()),
+              this.getConsumer())) {
             reader.run();
           }
         }
@@ -106,9 +108,57 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
     
     // Read what may be the open file
     if (children.length >= 1) {
-      this.openFile(this.directory.resolve(
+      this.openFile(this.getDirectory().resolve(
           children[children.length - 1].getName()), readExistingRecords);
     }
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // GETTERS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets the directory being watched.
+   * @return The directory
+   */
+  public Path getDirectory() {
+    return this.directory;
+  }
+
+  /**
+   * Gets the service watching for changes in the directory.
+   * @return The service
+   */
+  protected WatchService getWatchService() {
+    return this.watchService;
+  }
+
+  /**
+   * Gets the consumer to which WARC records are passed to.
+   * @return The consumer
+   */
+  public Consumer<WarcRecord> getConsumer() {
+    return this.consumer;
+  }
+
+  /**
+   * Gets the current WARC record reader.
+   * @return The reader
+   */
+  protected WarcRecordReader getReader() {
+    return this.reader;
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // SETTER
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Sets the WARC record reader.
+   * @param reader The reader
+   */
+  public void setReader(final WarcRecordReader reader) {
+    this.reader = reader;
   }
   
   /////////////////////////////////////////////////////////////////////////////
@@ -117,34 +167,35 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   
   @Override
   public void run() {
+    final Path directory = this.getDirectory();
     try {
       while (true) {
-        final WatchKey key = this.watchService.take();
+        final WatchKey key = this.getWatchService().take();
         for (final WatchEvent<?> event : key.pollEvents()) {
           final WatchEvent.Kind<?> kind = event.kind();
           if (kind == StandardWatchEventKinds.ENTRY_CREATE) {
-            final Path inputFile = this.directory.resolve((Path) event.context());
-            LOG.fine("New file created in " + this.directory + ": " + inputFile);
+            final Path inputFile = directory.resolve((Path) event.context());
+            LOG.fine("New file created in " + directory + ": " + inputFile);
             this.openFile(inputFile, true);
           } else if (kind == StandardWatchEventKinds.OVERFLOW) {
-            LOG.warning("Overflow detected when watching " + this.directory);
+            LOG.warning("Overflow detected when watching " + directory);
           } else {
             LOG.warning("Unknown watch event kind '" + kind + "' when watching "
-                + this.directory);
+                + directory);
           }
         }
         
         if (!key.reset()) {
           LOG.severe(
-              "Directory " + this.directory + " can no longer be watched");
+              "Directory " + directory + " can no longer be watched");
           break;
         }
       }
     } catch (final InterruptedException exception) {
       LOG.log(Level.SEVERE,
-          "Interrupted watching " + this.directory, exception);
+          "Interrupted watching " + directory, exception);
     } catch (final IOException exception) {
-      LOG.log(Level.SEVERE, "Error watching " + this.directory, exception);
+      LOG.log(Level.SEVERE, "Error watching " + directory, exception);
     }
   }
   
@@ -152,21 +203,39 @@ public class ArchiveWatcher extends Thread implements AutoCloseable {
   public void close() throws IOException {
     this.closeFile();
   }
-  
+
+  /**
+   * Closes the currently opened file, if any.
+   * @throws IOException On closing the file
+   * @see {@link #openFile(Path, boolean)}
+   */
   protected void closeFile() throws IOException {
-    if (this.reader != null) {
-      this.reader.close();
-      this.reader = null;
+    synchronized (this) {
+      final WarcRecordReader reader = this.getReader();
+      if (reader != null) {
+        this.setReader(null);
+        reader.close();
+      }
     }
   }
-  
+
+  /**
+   * Starts reading from a new file, keeping watch if records are appended.
+   * @param inputFile The file to read
+   * @param consumeExistingRecords Whether to also pass existing records to the
+   * consumer
+   * @throws IOException On opening the file
+   */
   protected void openFile(
       final Path inputFile, final boolean consumeExistingRecords)
   throws IOException {
-    this.closeFile();
-    this.reader = new OpenWarcReader(
-        inputFile, consumeExistingRecords, this.consumer, 1000);
-    this.reader.start();
+    synchronized (this) {
+      this.closeFile();
+      final WarcRecordReader reader = new ContinuousWarcRecordReader(
+          inputFile, consumeExistingRecords, this.getConsumer(), 1000);
+      this.setReader(reader);
+      reader.start();
+    }
   }
 
 }

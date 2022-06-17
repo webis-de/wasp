@@ -1,4 +1,4 @@
-package de.webis.warc.ui;
+package de.webis.wasp;
 
 import java.io.IOException;
 
@@ -8,6 +8,8 @@ import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.resource.ResourceCollection;
+
+import de.webis.wasp.ui.SearchServlet;
 
 public class SearchService extends Thread {
   
