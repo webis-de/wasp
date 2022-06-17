@@ -4,11 +4,8 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
@@ -25,7 +22,7 @@ public class ResultsFetcher {
   
   protected static final Highlight HIGHLIGHT =
       Highlight.of(highlight -> highlight
-          .fields(Index.FIELD_CONTENT_NAME, HighlightField.of(field -> field
+          .fields(ResponseRecord.FIELD_CONTENT, HighlightField.of(field -> field
               .type("unified"))));
 
   /////////////////////////////////////////////////////////////////////////////
@@ -71,12 +68,12 @@ public class ResultsFetcher {
         .size(this.pageSize)
         .from((page - 1) * this.getPageSize()));
 
-    final SearchResponse<ObjectNode> searchResponse =
+    final SearchResponse<ResponseRecord> searchResponse =
         this.index.search(searchRequest);
-    final HitsMetadata<ObjectNode> hits = searchResponse.hits();
+    final HitsMetadata<ResponseRecord> hits = searchResponse.hits();
     
     final List<Result> results = new ArrayList<>();
-    for (final Hit<ObjectNode> hit : hits.hits()) {
+    for (final Hit<ResponseRecord> hit : hits.hits()) {
       final Result result = this.toResult(
           hit, this.query.getFrom(), this.query.getTo());
       if (!result.isEmpty()) { results.add(result); }
@@ -85,31 +82,28 @@ public class ResultsFetcher {
   }
   
   protected Result toResult(
-      final Hit<ObjectNode> hit, final Instant from, final Instant to) {
+      final Hit<ResponseRecord> hit, final Instant from, final Instant to) {
     final double score = hit.score();
     
-    final ObjectNode source = hit.source();
-    final MinimalRequest request = this.pickRequest(source, from, to);
+    final ResponseRecord response = hit.source();
+    final RequestRecord request = this.pickRequest(response, from, to);
     
     final String uri = request.getUri();
     final Instant instant = request.getDate();
-    final String title = source.get(Index.FIELD_TITLE_NAME).toString();
-    final String content = source.get(Index.FIELD_CONTENT_NAME).toString();
+    final String title = response.getTitle();
+    final String content = response.getContent();
     final String snippet = this.getSnippet(hit);
     
     return new Result(score, uri, instant, title, content, snippet);
   }
   
-  protected MinimalRequest pickRequest(
-      final ObjectNode source, final Instant from, final Instant to) {
-    final ArrayNode requestSources =
-        (ArrayNode) source.get(Index.FIELD_REQUEST_NAME);
-    if (requestSources == null || requestSources.size() == 0) {
-      throw new IllegalArgumentException("Hit contained no request");
-    }
-    for (int i = requestSources.size() - 1; i >= 0; --i) {
-      final JsonNode requestSource = requestSources.get(i);
-      final MinimalRequest request = new MinimalRequest(requestSource.get(i));
+  protected RequestRecord pickRequest(
+      final ResponseRecord response, final Instant from, final Instant to) {
+    final List<RequestRecord> requests = response.getRequests();
+    final ListIterator<RequestRecord> iterator =
+        requests.listIterator(requests.size());
+    while (iterator.hasPrevious()) {
+      final RequestRecord request = iterator.previous();
       final Instant date = request.getDate();
       if (from != null && date.isBefore(from)) { continue; }
       if (to != null && date.isAfter(to)) { continue; }
@@ -119,58 +113,11 @@ public class ResultsFetcher {
         "it contained no request in time interval");
   }
   
-  protected String getSnippet(final Hit<ObjectNode> hit) {
+  protected String getSnippet(final Hit<ResponseRecord> hit) {
     final Map<String, List<String>> highlights = hit.highlight();
-    final List<String> highlight = highlights.get(Index.FIELD_CONTENT_NAME);
+    final List<String> highlight = highlights.get(ResponseRecord.FIELD_CONTENT);
     if (highlight == null) { return ""; }
     return String.join(" ... ", highlight);
-  }
-
-  /////////////////////////////////////////////////////////////////////////////
-  // HELPER CLASSES
-  /////////////////////////////////////////////////////////////////////////////
-  
-  protected static class MinimalRequest {
-
-    ///////////////////////////////////////////////////////////////////////////
-    // MEMBERS
-    ///////////////////////////////////////////////////////////////////////////
-    
-    protected final String uri;
-    
-    protected final Instant date;
-
-    ///////////////////////////////////////////////////////////////////////////
-    // CONSTRUCTORS
-    ///////////////////////////////////////////////////////////////////////////
-    
-    public MinimalRequest(final String uri, final Instant date) {
-      if (uri == null) { throw new NullPointerException("uri"); }
-      if (date == null) { throw new NullPointerException("date"); }
-      this.uri = uri;
-      this.date = date;
-    }
-    
-    public MinimalRequest(final JsonNode requestSource) {
-      this.uri = requestSource.get(Index.FIELD_URI_NAME).asText();
-      if (this.uri == null) { throw new NullPointerException("uri"); }
-      this.date = Instant.parse(
-          requestSource.get(Index.FIELD_DATE_NAME).asText());
-      if (this.date == null) { throw new NullPointerException("date"); }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // GETTERS
-    ///////////////////////////////////////////////////////////////////////////
-    
-    public String getUri() {
-      return this.uri;
-    }
-    
-    public Instant getDate() {
-      return this.date;
-    }
-    
   }
 
 }

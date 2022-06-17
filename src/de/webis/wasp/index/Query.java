@@ -99,12 +99,12 @@ public class Query {
     return BoolQuery.of(builder -> builder
         .should(should -> should
             .match(match -> match
-                .field(Index.FIELD_CONTENT_NAME)
+                .field(ResponseRecord.FIELD_CONTENT)
                 .query(this.getTerms())
                 .operator(Operator.And)))
         .should(should -> should
             .match(match -> match
-                .field(Index.FIELD_TITLE_NAME)
+                .field(ResponseRecord.FIELD_TITLE)
                 .query(this.getTerms())
                 .operator(Operator.And)
                 .boost(2.0f))));
@@ -113,14 +113,15 @@ public class Query {
   protected NestedQuery getTimeQueryBuilder() {
     final RangeQuery rangeQuery =
         RangeQuery.of(builder -> {
-          builder.field(Index.FIELD_REQUEST_NAME + "." + Index.FIELD_DATE_NAME);
+          builder.field(
+              ResponseRecord.FIELD_REQUESTS + "." + RequestRecord.FIELD_DATE);
           if (this.from != null) { builder.from(this.from.toString()); }
           if (this.to != null) { builder.to(this.to.toString()); }
           return builder;
         });
     
     return NestedQuery.of(builder -> builder
-        .path(Index.FIELD_REQUEST_NAME)
+        .path(ResponseRecord.FIELD_REQUESTS)
         .query(innerBuilder -> innerBuilder.range(rangeQuery))
         .scoreMode(ChildScoreMode.Max));
   }
