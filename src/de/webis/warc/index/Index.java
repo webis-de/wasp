@@ -1,27 +1,40 @@
 package de.webis.warc.index;
 
 import java.io.IOException;
+import java.io.StringReader;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.http.HttpHost;
-import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
-import org.elasticsearch.action.get.GetRequest;
-import org.elasticsearch.action.get.GetResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptType;
-import org.joda.time.Instant;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch.core.GetResponse;
+import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.UpdateRequest;
+import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.json.JsonData;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 
 public class Index implements AutoCloseable {
 
@@ -54,27 +67,36 @@ public class Index implements AutoCloseable {
   
   public static final String FIELD_DATE_NAME = "date";
   
-  protected static final String TYPE_MAPPING = 
-      "{\"" + TYPE_NAME + "\":{\n" + 
-      "  \"properties\":{\n" +
-      "    \"" + FIELD_TITLE_NAME + "\":{\"type\":\"text\"},\n" +
-      "    \"" + FIELD_CONTENT_NAME + "\":{\"type\":\"text\"},\n" +
-      "    \"" + FIELD_REVISITED_NAME + "\":{\"type\":\"keyword\"},\n" +
-      "    \"" + FIELD_REQUEST_NAME + "\":{\n" +
-      "      \"type\":\"nested\",\n" +
-      "      \"properties\":{\n" +
-      "        \""+ FIELD_URI_NAME + "\":{\"type\":\"keyword\"},\n" +
-      "        \""+ FIELD_DATE_NAME + "\":{\"type\":\"date\"}\n" +
+  protected static final String TYPE_MAPPING =
+      "{\"mappings\": {\"properties\": {\n" +
+      "  {\"" + TYPE_NAME + "\":{\n" + 
+      "    \"properties\":{\n" +
+      "      \"" + FIELD_TITLE_NAME + "\":{\"type\":\"text\"},\n" +
+      "      \"" + FIELD_CONTENT_NAME + "\":{\"type\":\"text\"},\n" +
+      "      \"" + FIELD_REVISITED_NAME + "\":{\"type\":\"keyword\"},\n" +
+      "      \"" + FIELD_REQUEST_NAME + "\":{\n" +
+      "        \"type\":\"nested\",\n" +
+      "        \"properties\":{\n" +
+      "          \""+ FIELD_URI_NAME + "\":{\"type\":\"keyword\"},\n" +
+      "          \""+ FIELD_DATE_NAME + "\":{\"type\":\"date\"}\n" +
+      "        }\n" +
       "      }\n" +
       "    }\n" +
-      "  }\n" +
-      "}}";
+      "  }}\n" +
+      "}}}";
+
+  protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+      .registerModule(new SimpleModule()
+          .addSerializer(new InstantSerializer())
+          .addDeserializer(Instant.class, new InstantDeserializer()));
   
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
   /////////////////////////////////////////////////////////////////////////////
   
-  protected final RestHighLevelClient client;
+  protected final ElasticsearchClient client;
+
+  protected final RestClient lowLevelClient;
   
   /////////////////////////////////////////////////////////////////////////////
   // CONSTRUCTORS
@@ -85,8 +107,13 @@ public class Index implements AutoCloseable {
   }
   
   public Index(final int port) {
-    this.client = new RestHighLevelClient(RestClient.builder(
-        new HttpHost("localhost", port, "http")));
+    this.lowLevelClient =
+        RestClient.builder(new HttpHost("localhost", port)).build();
+
+    final JacksonJsonpMapper mapper = new JacksonJsonpMapper(OBJECT_MAPPER);
+    final ElasticsearchTransport transport =
+        new RestClientTransport(this.lowLevelClient, mapper);
+    this.client = new ElasticsearchClient(transport);
   }
   
   /////////////////////////////////////////////////////////////////////////////
@@ -94,39 +121,43 @@ public class Index implements AutoCloseable {
   /////////////////////////////////////////////////////////////////////////////
   
   public void initialize() throws IOException {
-    final CreateIndexRequest createIndexRequest =
-        new CreateIndexRequest(INDEX_NAME);
+    final CreateIndexRequest createIndexRequest = CreateIndexRequest.of(
+        indexBuilder -> indexBuilder
+          .index(INDEX_NAME)
+          .withJson(new StringReader(TYPE_MAPPING)));
     LOG.info("Created index with mapping:\n" + TYPE_MAPPING);
-    createIndexRequest.mapping(TYPE_NAME, TYPE_MAPPING, XContentType.JSON);
     this.client.indices().create(createIndexRequest);
   }
   
   @Override
   public void close() throws IOException {
-    this.client.close();
+    this.lowLevelClient.close();
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // ID ACCESS
   
   public String resolveConcurrentId(final String id) throws IOException {
-    final GetResponse getIdResponse = this.getResponse(id);
+    final GetResponse<ObjectNode> getIdResponse = this.getResponse(id);
     if (getIdResponse == null) {
       return null;
     } else {
-      return getIdResponse.getId();
+      return getIdResponse.id();
     }
   }
   
-  public GetResponse getResponse(final String id) throws IOException {
-    final GetRequest getIdRequest = new GetRequest(INDEX_NAME, TYPE_NAME, id);
-    final GetResponse getIdResponse = this.client.get(getIdRequest);
-    if (getIdResponse.isExists()) {
-      final Object revisited = getIdResponse.getSource().get(FIELD_REVISITED_NAME);
+  public GetResponse<ObjectNode> getResponse(final String id)
+  throws IOException {
+    final GetResponse<ObjectNode> indexResponse = this.client.get(
+        request -> request.index(INDEX_NAME).id(id),
+        ObjectNode.class);
+    if (indexResponse.found()) {
+      final ObjectNode response = indexResponse.source();
+      final JsonNode revisited = response.get(FIELD_REVISITED_NAME);
       if (revisited == null) {
-        return getIdResponse;
+        return indexResponse;
       } else {
-        return this.getResponse(revisited.toString());
+        return this.getResponse(revisited.asText());
       }
     } else {
       return null;
@@ -143,17 +174,20 @@ public class Index implements AutoCloseable {
     if (content == null) {
       throw new NullPointerException("content for " + id);
     }
+    
 
-    final XContentBuilder sourceBuilder = XContentFactory.jsonBuilder();
-    sourceBuilder.startObject();
-    sourceBuilder.field(FIELD_CONTENT_NAME, content);
-    sourceBuilder.field(FIELD_TITLE_NAME, title);
-    sourceBuilder.field(FIELD_REQUEST_NAME, Collections.EMPTY_LIST);
-    sourceBuilder.endObject();
-
-    final IndexRequest indexRequest =
-        new IndexRequest(INDEX_NAME, TYPE_NAME, id);
-    indexRequest.source(sourceBuilder);
+    final ObjectNode document = OBJECT_MAPPER.createObjectNode();
+    document.set(FIELD_CONTENT_NAME,
+        OBJECT_MAPPER.convertValue(content, JsonNode.class));
+    document.set(FIELD_TITLE_NAME,
+        OBJECT_MAPPER.convertValue(title, JsonNode.class));
+    document.set(FIELD_REQUEST_NAME,
+        OBJECT_MAPPER.convertValue(Collections.EMPTY_LIST, JsonNode.class));
+    final IndexRequest<ObjectNode> indexRequest = IndexRequest.of(
+        builder -> builder
+          .index(INDEX_NAME)
+          .id(id)
+          .document(document));
     this.client.index(indexRequest);
     return true;
   }
@@ -170,14 +204,14 @@ public class Index implements AutoCloseable {
       return false;
     }
 
-    final XContentBuilder sourceBuilder = XContentFactory.jsonBuilder();
-    sourceBuilder.startObject();
-    sourceBuilder.field(FIELD_REVISITED_NAME, responseId);
-    sourceBuilder.endObject();
-
-    final IndexRequest indexRequest =
-        new IndexRequest(INDEX_NAME, TYPE_NAME, id);
-    indexRequest.source(sourceBuilder);
+    final ObjectNode document = OBJECT_MAPPER.createObjectNode();
+    document.set(FIELD_REVISITED_NAME,
+        OBJECT_MAPPER.convertValue(responseId, JsonNode.class));
+    final IndexRequest<ObjectNode> indexRequest = IndexRequest.of(
+        builder -> builder
+          .index(INDEX_NAME)
+          .id(id)
+          .document(document));
     this.client.index(indexRequest);
     return true;
   }
@@ -191,20 +225,24 @@ public class Index implements AutoCloseable {
       return false;
     }
     
-    final Map<String, Object> requestMap = new HashMap<>();
+    final Map<String, String> requestMap = new HashMap<>();
     requestMap.put(FIELD_URI_NAME, uri);
-    requestMap.put(FIELD_DATE_NAME, instant);
-    final Map<String, Object> parameters =
-        Collections.singletonMap("request", requestMap);
+    requestMap.put(FIELD_DATE_NAME, instant.toString());
+    final Map<String, JsonData> parameters =
+        Collections.singletonMap("request", JsonData.of(requestMap));
     
-    final Script script = new Script(ScriptType.INLINE, "painless",
-        "ctx._source." + FIELD_REQUEST_NAME + ".add(params.request);",
-        parameters);
+    final String scriptSource = 
+        "ctx._source." + FIELD_REQUEST_NAME + ".add(params.request);";
 
-    final UpdateRequest updateRequest =
-        new UpdateRequest(INDEX_NAME, TYPE_NAME, responseId);
-    updateRequest.script(script);
-    this.client.update(updateRequest);
+    final UpdateRequest<ObjectNode, ObjectNode> updateRequest =
+        UpdateRequest.of(builder -> builder
+            .index(INDEX_NAME)
+            .id(responseId)
+            .script(script -> script.inline(inline -> inline
+                .lang("painless")
+                .source(scriptSource)
+                .params(parameters))));
+    this.client.update(updateRequest, ObjectNode.class);
     return true;
   }
 
@@ -215,9 +253,73 @@ public class Index implements AutoCloseable {
     return new ResultsFetcher(this, query, pageSize);
   }
   
-  protected SearchResponse search(final SearchRequest searchRequest)
+  protected SearchResponse<ObjectNode> search(final SearchRequest searchRequest)
   throws IOException {
-    return this.client.search(searchRequest);
+    return this.client.search(searchRequest, ObjectNode.class);
+  }
+  
+
+  /////////////////////////////////////////////////////////////////////////////
+  // JSON BINDINGS
+  
+  /**
+   * Serializer for {@link Instant} using ISO-8601.
+   *
+   * @author johannes.kiesel@uni-weimar.de
+   * @see InstantDeserializer
+   * @see DateTimeFormatter#ISO_INSTANT
+   *
+   */
+  public static class InstantSerializer extends StdSerializer<Instant> {
+
+    private static final long serialVersionUID = 2795427768750728869L;
+
+    /**
+     * Creates a new serializer.
+     */
+    public InstantSerializer() {
+      super(Instant.class);
+    }
+
+    @Override
+    public void serialize(
+        final Instant value,
+        final JsonGenerator generator,
+        final SerializerProvider provider)
+    throws IOException {
+      generator.writeString(value.toString());
+    }
+    
+  }
+
+  /**
+   * Deserializer for {@link Instant} using ISO-8601.
+   *
+   * @author johannes.kiesel@uni-weimar.de
+   * @see InstantSerializer
+   * @see DateTimeFormatter#ISO_INSTANT
+   *
+   */
+  public static class InstantDeserializer extends StdDeserializer<Instant> {
+
+    private static final long serialVersionUID = -3591379516415686398L;
+
+    /**
+     * Creates a new deserializer.
+     */
+    public InstantDeserializer() {
+      super(Instant.class);
+    }
+
+    @Override
+    public Instant deserialize(
+        final JsonParser parser,
+        final DeserializationContext context)
+    throws IOException, JsonProcessingException {
+      final String text = parser.getValueAsString();
+      return Instant.parse(text);
+    }
+    
   }
   
   /////////////////////////////////////////////////////////////////////////////

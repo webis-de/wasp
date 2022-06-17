@@ -19,6 +19,7 @@ import org.apache.http.client.entity.DecompressingEntity;
 import org.apache.http.client.entity.DeflateInputStream;
 import org.apache.http.client.entity.InputStreamFactory;
 import org.apache.http.config.Lookup;
+import org.apache.http.config.MessageConstraints;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.entity.ContentLengthStrategy;
@@ -32,8 +33,6 @@ import org.apache.http.impl.io.HttpTransportMetricsImpl;
 import org.apache.http.impl.io.IdentityInputStream;
 import org.apache.http.impl.io.SessionInputBufferImpl;
 import org.apache.http.io.SessionInputBuffer;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
@@ -45,7 +44,7 @@ import edu.cmu.lemurproject.WarcRecord;
  * @author johannes.kiesel@uni-weimar.de
  *
  */
-@SuppressWarnings("deprecation")
+//@SuppressWarnings("deprecation")
 public class Warcs {
   
   public static final String HEADER_ID = "WARC-Record-ID";
@@ -199,11 +198,11 @@ public class Warcs {
     final InputStream inputStream =
         new ByteArrayInputStream(record.getByteContent());
     sessionInputBuffer.bind(inputStream);
-    final HttpParams params = new BasicHttpParams();
+    final MessageConstraints constraints = MessageConstraints.DEFAULT;
     final DefaultHttpResponseParser parser =
         new DefaultHttpResponseParser(
             sessionInputBuffer, null, new DefaultHttpResponseFactory(),
-            params);
+            constraints);
     final HttpResponse response = parser.parse();
     final HttpEntity entity = Warcs.getEntity(response, sessionInputBuffer);
     response.setEntity(entity);

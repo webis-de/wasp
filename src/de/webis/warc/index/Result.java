@@ -1,14 +1,23 @@
 package de.webis.warc.index;
 
-import org.joda.time.Instant;
+import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+
+@JsonAutoDetect(
+    getterVisibility = Visibility.NONE,
+    setterVisibility = Visibility.NONE)
 public class Result {
   
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
   /////////////////////////////////////////////////////////////////////////////
   
-  protected final float score;
+  protected final double score;
   
   protected final String uri;
   
@@ -24,9 +33,14 @@ public class Result {
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
   
-  public Result(final float score,
-      final String uri, final Instant instant,
-      final String title, final String content, final String snippet) {
+  @JsonCreator
+  public Result(
+      @JsonProperty("score") final double score,
+      @JsonProperty("uri") final String uri,
+      @JsonProperty("instant") final Instant instant,
+      @JsonProperty("title") final String title,
+      @JsonProperty("content") final String content,
+      @JsonProperty("snippet") final String snippet) {
     if (uri == null) { throw new NullPointerException("URI"); }
     if (instant == null) { throw new NullPointerException("instant"); }
     if (title == null) { throw new NullPointerException("title"); }
@@ -43,27 +57,33 @@ public class Result {
   /////////////////////////////////////////////////////////////////////////////
   // GETTER
   /////////////////////////////////////////////////////////////////////////////
-  
-  public float getScore() {
+
+  @JsonGetter("score")
+  public double getScore() {
     return this.score;
   }
-  
+
+  @JsonGetter("uri")
   public String getUri() {
     return this.uri;
   }
-  
+
+  @JsonGetter("instant")
   public Instant getInstant() {
     return this.instant;
   }
   
+  @JsonGetter("title")
   public String getTitle() {
     return this.title;
   }
-  
+
+  @JsonGetter("content")
   public String getContent() {
     return this.content;
   }
-  
+
+  @JsonGetter("snippet")
   public String getSnippet() {
     return this.snippet;
   }

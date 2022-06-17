@@ -1,20 +1,21 @@
 package de.webis.warc.index;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.common.text.Text;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
-import org.joda.time.Instant;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Highlight;
+import co.elastic.clients.elasticsearch.core.search.HighlightField;
+import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 
 public class ResultsFetcher {
 
@@ -22,8 +23,10 @@ public class ResultsFetcher {
   // STATIC FIELDS
   /////////////////////////////////////////////////////////////////////////////
   
-  protected static final HighlightBuilder HIGHLIGHT_BUILDER =
-      ResultsFetcher.getHighlightBuilder();
+  protected static final Highlight HIGHLIGHT =
+      Highlight.of(highlight -> highlight
+          .fields(Index.FIELD_CONTENT_NAME, HighlightField.of(field -> field
+              .type("unified"))));
 
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
@@ -32,8 +35,8 @@ public class ResultsFetcher {
   protected final Index index;
 
   protected final Query query;
-  
-  protected final SearchSourceBuilder searchBuilder;
+
+  protected final int pageSize;
 
   /////////////////////////////////////////////////////////////////////////////
   // CONSTRUCTORS
@@ -49,10 +52,7 @@ public class ResultsFetcher {
 
     this.index = index;
     this.query = query;
-    this.searchBuilder = new SearchSourceBuilder();
-    this.searchBuilder.query(query.getBuilder());
-    this.searchBuilder.highlighter(HIGHLIGHT_BUILDER);
-    this.searchBuilder.size(pageSize);
+    this.pageSize = pageSize;
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -60,20 +60,23 @@ public class ResultsFetcher {
   /////////////////////////////////////////////////////////////////////////////
 
   public int getPageSize() {
-    return this.searchBuilder.size();
+    return this.pageSize;
   }
 
   public synchronized List<Result> fetch(final int page)
   throws IOException {
-    this.searchBuilder.from((page - 1) * this.getPageSize());
+    final SearchRequest searchRequest = SearchRequest.of(builder -> builder
+        .query(q -> q.bool(this.query.getBuilder()))
+        .highlight(HIGHLIGHT)
+        .size(this.pageSize)
+        .from((page - 1) * this.getPageSize()));
 
-    final SearchRequest searchRequest = new SearchRequest();
-    searchRequest.source(this.searchBuilder);
-    final SearchResponse searchResponse = this.index.search(searchRequest);
-    final SearchHits hits = searchResponse.getHits();
+    final SearchResponse<ObjectNode> searchResponse =
+        this.index.search(searchRequest);
+    final HitsMetadata<ObjectNode> hits = searchResponse.hits();
     
     final List<Result> results = new ArrayList<>();
-    for (final SearchHit hit : hits) {
+    for (final Hit<ObjectNode> hit : hits.hits()) {
       final Result result = this.toResult(
           hit, this.query.getFrom(), this.query.getTo());
       if (!result.isEmpty()) { results.add(result); }
@@ -82,10 +85,10 @@ public class ResultsFetcher {
   }
   
   protected Result toResult(
-      final SearchHit hit, final Instant from, final Instant to) {
-    final float score = hit.getScore();
+      final Hit<ObjectNode> hit, final Instant from, final Instant to) {
+    final double score = hit.score();
     
-    final Map<String, Object> source = hit.getSourceAsMap();
+    final ObjectNode source = hit.source();
     final MinimalRequest request = this.pickRequest(source, from, to);
     
     final String uri = request.getUri();
@@ -98,46 +101,29 @@ public class ResultsFetcher {
   }
   
   protected MinimalRequest pickRequest(
-      final Map<String, Object> source, final Instant from, final Instant to) {
-    @SuppressWarnings("unchecked")
-    final List<Map<String, Object>> requestSources =
-      (List<Map<String, Object>>) source.get(Index.FIELD_REQUEST_NAME);
-    final ListIterator<Map<String, Object>> requestSourceIterator =
-        requestSources.listIterator(requestSources.size());
-    while (requestSourceIterator.hasPrevious()) {
-      final MinimalRequest request =
-          new MinimalRequest(requestSourceIterator.previous());
+      final ObjectNode source, final Instant from, final Instant to) {
+    final ArrayNode requestSources =
+        (ArrayNode) source.get(Index.FIELD_REQUEST_NAME);
+    if (requestSources == null || requestSources.size() == 0) {
+      throw new IllegalArgumentException("Hit contained no request");
+    }
+    for (int i = requestSources.size() - 1; i >= 0; --i) {
+      final JsonNode requestSource = requestSources.get(i);
+      final MinimalRequest request = new MinimalRequest(requestSource.get(i));
       final Instant date = request.getDate();
       if (from != null && date.isBefore(from)) { continue; }
       if (to != null && date.isAfter(to)) { continue; }
       return request;
     }
     throw new IllegalArgumentException(
-        "SearchHit contained no request in time interval");
+        "it contained no request in time interval");
   }
   
-  protected String getSnippet(final SearchHit hit) {
-    final Map<String, HighlightField> highlights = hit.getHighlightFields();
-    final HighlightField highlight = highlights.get(Index.FIELD_CONTENT_NAME);
+  protected String getSnippet(final Hit<ObjectNode> hit) {
+    final Map<String, List<String>> highlights = hit.highlight();
+    final List<String> highlight = highlights.get(Index.FIELD_CONTENT_NAME);
     if (highlight == null) { return ""; }
-
-    final Text[] textFragments = highlight.fragments();
-    final String[] fragments = new String[textFragments.length];
-    for (int f = 0; f < fragments.length; ++f) {
-      fragments[f] = textFragments[f].string();
-    }
-    return String.join(" ... ", fragments);
-  }
-
-  protected static HighlightBuilder getHighlightBuilder() {
-    final HighlightBuilder highlightBuilder = new HighlightBuilder();
-    
-    final HighlightBuilder.Field content =
-        new HighlightBuilder.Field(Index.FIELD_CONTENT_NAME);
-    content.highlighterType("unified");
-    highlightBuilder.field(content);
-
-    return highlightBuilder;
+    return String.join(" ... ", highlight);
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -165,11 +151,11 @@ public class ResultsFetcher {
       this.date = date;
     }
     
-    public MinimalRequest(final Map<String, Object> requestSource) {
-      this.uri = (String) requestSource.get(Index.FIELD_URI_NAME);
+    public MinimalRequest(final JsonNode requestSource) {
+      this.uri = requestSource.get(Index.FIELD_URI_NAME).asText();
       if (this.uri == null) { throw new NullPointerException("uri"); }
       this.date = Instant.parse(
-          (String) requestSource.get(Index.FIELD_DATE_NAME));
+          requestSource.get(Index.FIELD_DATE_NAME).asText());
       if (this.date == null) { throw new NullPointerException("date"); }
     }
 

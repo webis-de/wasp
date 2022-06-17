@@ -8,9 +8,9 @@ import java.util.function.Function;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.time.Instant;
 
 import org.apache.http.HttpResponse;
-import org.joda.time.Instant;
 
 import de.webis.warc.Warcs;
 import de.webis.warc.read.ArchiveWatcher;
@@ -171,7 +171,7 @@ public class WarcIndexer implements Consumer<WarcRecord> {
     this.index.indexRequest(
         Warcs.getConcurrentRecordId(record),
         Warcs.getTargetUri(record),
-        new Instant(Warcs.getDate(record).getEpochSecond() * 1000));
+        Instant.ofEpochSecond(Warcs.getDate(record).getEpochSecond()));
   }
   
   /////////////////////////////////////////////////////////////////////////////

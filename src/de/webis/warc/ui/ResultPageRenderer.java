@@ -3,15 +3,15 @@ package de.webis.warc.ui;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
 
 import org.apache.commons.text.StringEscapeUtils;
-import org.joda.time.DateTimeZone;
-import org.joda.time.Instant;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 import de.webis.warc.index.Query;
 import de.webis.warc.index.Result;
@@ -29,10 +29,10 @@ public class ResultPageRenderer {
   /////////////////////////////////////////////////////////////////////////////
   
   protected static final DateTimeFormatter REPLAY_FORMATTER =
-      DateTimeFormat.forPattern("yyyyMMddHHmmss");
+      DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
   
   protected static final DateTimeFormatter DATE_TIME_PICKER_FORMATTER =
-      DateTimeFormat.forPattern("yyyy-MM-dd HH:mm");
+      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
   
   protected static final int MAX_URI_DISPLAY_LENGTH = 60;
   
@@ -88,7 +88,7 @@ public class ResultPageRenderer {
    * @param timezone Time zone of the user client
    */
   public void render(final PrintWriter output,
-      final Locale locale, final DateTimeZone timezone) {
+      final Locale locale, final TimeZone timezone) {
     this.renderHeader(output, locale, null);
     this.renderQueryBox(output, null, timezone);
     this.renderFooter(output);
@@ -108,7 +108,7 @@ public class ResultPageRenderer {
   public void render(final PrintWriter output,
       final Query query,
       final List<Result> page, final int pageNumber, final boolean isLastPage,
-      final Locale locale, final DateTimeZone timezone) {
+      final Locale locale, final TimeZone timezone) {
     this.renderHeader(output, locale, query);
     this.renderQueryBox(output, query, timezone);
     this.renderQueryConfirmation(output, query, pageNumber, timezone);
@@ -165,17 +165,17 @@ public class ResultPageRenderer {
   }
   
   protected void renderQueryBox(final PrintWriter output,
-      final Query query, final DateTimeZone timezone) {
+      final Query query, final TimeZone timezone) {
     String terms = "";
     String from = "";
     String to = "";
     if (query != null) {
       terms = query.getTerms();
       if (query.getFrom() != null) {
-        from = this.getDateTimePickerValue(query.getFrom(), timezone);
+        from = this.instantToTimePickerFormat(query.getFrom(), timezone);
       }
       if (query.getTo() != null) {
-        to = this.getDateTimePickerValue(query.getTo(), timezone);
+        to = this.instantToTimePickerFormat(query.getTo(), timezone);
       }
     }
     
@@ -223,7 +223,7 @@ public class ResultPageRenderer {
   
   protected void renderQueryConfirmation(
       final PrintWriter output, final Query query,
-      final int pageNumber, final DateTimeZone timezone) {
+      final int pageNumber, final TimeZone timezone) {
     output.append(String.format(
         "<div class='current-query'>\n" +
         "  Page <span class='page-number'>%d</span>\n" +
@@ -241,7 +241,7 @@ public class ResultPageRenderer {
   
   protected void renderResult(
       final PrintWriter output, final Result result,
-      final DateTimeZone timezone) {
+      final TimeZone timezone) {
     final String title = StringEscapeUtils.escapeHtml4(result.getTitle());
     final String replayUri = this.getReplayUri(result);
     final String liveUri = result.getUri();
@@ -287,7 +287,7 @@ public class ResultPageRenderer {
   protected void renderPagination(
       final PrintWriter output, final Query query,
       final int pageNumber, final boolean isLastPage,
-      final DateTimeZone timezone) {
+      final TimeZone timezone) {
     final String hrefPrefix = this.getPaginationHrefPrefix(query, timezone);
 
     output.append(
@@ -329,14 +329,8 @@ public class ResultPageRenderer {
     return titleBuilder.toString();
   }
   
-  protected String getDateTimePickerValue(
-      final Instant instant, final DateTimeZone timezone) {
-    return instant.plus(timezone.getOffset(instant))
-        .toString(DATE_TIME_PICKER_FORMATTER);
-  }
-  
   protected String getPaginationHrefPrefix(
-      final Query query, final DateTimeZone timezone) {
+      final Query query, final TimeZone timezone) {
     final StringBuilder hrefPrefixBuilder = new StringBuilder();
     try {
       hrefPrefixBuilder.append('?')
@@ -367,19 +361,19 @@ public class ResultPageRenderer {
   }
   
   protected String getReplayTime(final Instant instant) {
-    return instant.toString(REPLAY_FORMATTER);
+    return REPLAY_FORMATTER.format(instant);
   }
   
   protected String getHtmlTime(
-      final Instant instant, final DateTimeZone timezone) {
+      final Instant instant, final TimeZone timezone) {
     return String.format("<time datetime='%s'>%s</time>",
         instant, this.instantToTimePickerFormat(instant, timezone));
   }
   
   protected String instantToTimePickerFormat(
-      final Instant instant, final DateTimeZone timezone) {
-    return instant.plus(timezone.getOffset(instant))
-        .toString(DATE_TIME_PICKER_FORMATTER);
+      final Instant instant, final TimeZone timezone) {
+    return DATE_TIME_PICKER_FORMATTER.format(instant.plus(
+          timezone.getOffset(instant.toEpochMilli()), ChronoUnit.MILLIS));
   }
 
 }

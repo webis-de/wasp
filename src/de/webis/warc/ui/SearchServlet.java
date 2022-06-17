@@ -1,22 +1,20 @@
 package de.webis.warc.ui;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
-
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import org.joda.time.DateTimeZone;
-import org.joda.time.Instant;
+import java.util.TimeZone;
 
 import de.webis.warc.index.Index;
 import de.webis.warc.index.Query;
 import de.webis.warc.index.Result;
 import de.webis.warc.index.ResultsFetcher;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 public class SearchServlet extends HttpServlet {
 
@@ -85,7 +83,7 @@ public class SearchServlet extends HttpServlet {
   throws ServletException, IOException {
     response.setContentType("text/html");
     final Query query = this.getQuery(request);
-    final DateTimeZone timezone = this.getClientTimezone(request);
+    final TimeZone timezone = this.getClientTimezone(request);
     if (query == null) {
       this.renderer.render(
           response.getWriter(), request.getLocale(), timezone);
@@ -104,7 +102,7 @@ public class SearchServlet extends HttpServlet {
     final String terms = request.getParameter(REQUEST_PARAMETER_TERMS);
     if (terms == null) { return null; }
 
-    final DateTimeZone timezone = this.getClientTimezone(request);
+    final TimeZone timezone = this.getClientTimezone(request);
     final Query query = Query.of(terms);
     final Instant from = this.parseInstantFromGet(
         request.getParameter(REQUEST_PARAMETER_FROM), timezone);
@@ -124,24 +122,23 @@ public class SearchServlet extends HttpServlet {
     }
   }
   
-  protected DateTimeZone getClientTimezone(
+  protected TimeZone getClientTimezone(
       final HttpServletRequest request) {
     final String value = request.getParameter(REQUEST_PARAMETER_TIMEZONE);
     if (value == null) {
-      return DateTimeZone.getDefault();
+      return TimeZone.getDefault();
     } else {
-      return DateTimeZone.forID(value);
+      return TimeZone.getTimeZone(value);
     } 
   }
   
   protected Instant parseInstantFromGet(
-      final String getParameter, final DateTimeZone timezone) {
+      final String getParameter, final TimeZone timezone) {
     if (getParameter == null || getParameter.isEmpty()) {
       return null;
     } else {
-      final Instant instant = Instant.parse(getParameter,
-          ResultPageRenderer.DATE_TIME_PICKER_FORMATTER.withZone(timezone));
-      return instant;
+      return Instant.from(ResultPageRenderer.DATE_TIME_PICKER_FORMATTER
+          .withZone(timezone.toZoneId()).parse(getParameter));
     }
   }
   

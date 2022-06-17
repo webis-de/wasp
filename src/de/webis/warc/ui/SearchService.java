@@ -1,5 +1,7 @@
 package de.webis.warc.ui;
 
+import java.io.IOException;
+
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -31,9 +33,13 @@ public class SearchService extends Thread {
         this.servletHolder, "/" + SearchServlet.SERVLET_PATH);
     
     // Serve files from resources/static/
-    servletHandler.setBaseResource(new ResourceCollection(
-        this.getClass().getClassLoader().getResource("static")
-        .toExternalForm()));
+    try {
+      servletHandler.setBaseResource(new ResourceCollection(
+          this.getClass().getClassLoader().getResource("static")
+          .toExternalForm()));
+    } catch (final IOException e) {
+      throw new RuntimeException(e); // should never happen
+    }
     final ServletHolder resourcesServlet =
         new ServletHolder("static-embedded", DefaultServlet.class);
     resourcesServlet.setInitParameter("dirAllowed", "true");

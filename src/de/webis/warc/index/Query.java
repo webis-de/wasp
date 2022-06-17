@@ -1,12 +1,12 @@
 package de.webis.warc.index;
 
-import org.apache.lucene.search.join.ScoreMode;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.Operator;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.RangeQueryBuilder;
-import org.joda.time.Instant;
+import java.time.Instant;
+
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
+import co.elastic.clients.elasticsearch._types.query_dsl.NestedQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
+import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 
 public class Query {
   
@@ -89,38 +89,40 @@ public class Query {
     return false;
   }
   
-  protected QueryBuilder getBuilder() {
-    final QueryBuilder termQueryBuilder = this.getTermQueryBuilder();
-    final QueryBuilder timeQueryBuilder = this.getTimeQueryBuilder();
-    return QueryBuilders.boolQuery()
-        .must(timeQueryBuilder).should(termQueryBuilder);
+  protected BoolQuery getBuilder() {
+    return BoolQuery.of(builder -> builder
+        .must(must -> must.nested(this.getTimeQueryBuilder()))
+        .should(should -> should.bool(this.getTermQueryBuilder())));
   }
   
-  protected QueryBuilder getTermQueryBuilder() {
-    BoolQueryBuilder termQueryBuilder = QueryBuilders.boolQuery();
-    termQueryBuilder = termQueryBuilder.should(
-        QueryBuilders.matchQuery(Index.FIELD_CONTENT_NAME, this.getTerms())
-        .operator(Operator.AND));
-    termQueryBuilder = termQueryBuilder.should(
-        QueryBuilders.matchQuery(Index.FIELD_TITLE_NAME, this.getTerms())
-        .operator(Operator.AND).boost(2.0f));
-    return termQueryBuilder;
+  protected BoolQuery getTermQueryBuilder() {
+    return BoolQuery.of(builder -> builder
+        .should(should -> should
+            .match(match -> match
+                .field(Index.FIELD_CONTENT_NAME)
+                .query(this.getTerms())
+                .operator(Operator.And)))
+        .should(should -> should
+            .match(match -> match
+                .field(Index.FIELD_TITLE_NAME)
+                .query(this.getTerms())
+                .operator(Operator.And)
+                .boost(2.0f))));
   }
   
-  protected QueryBuilder getTimeQueryBuilder() {
-    RangeQueryBuilder rangeQueryBuilder =
-        QueryBuilders.rangeQuery(
-            Index.FIELD_REQUEST_NAME + "." + Index.FIELD_DATE_NAME);
-    if (this.from != null) {
-      rangeQueryBuilder = rangeQueryBuilder.from(this.from, true);
-    }
-    if (this.to != null) {
-      rangeQueryBuilder = rangeQueryBuilder.to(this.to, true);
-    }
-
-    final QueryBuilder timeQueryBuilder = QueryBuilders.nestedQuery(
-        Index.FIELD_REQUEST_NAME, rangeQueryBuilder, ScoreMode.Max);
-    return timeQueryBuilder;
+  protected NestedQuery getTimeQueryBuilder() {
+    final RangeQuery rangeQuery =
+        RangeQuery.of(builder -> {
+          builder.field(Index.FIELD_REQUEST_NAME + "." + Index.FIELD_DATE_NAME);
+          if (this.from != null) { builder.from(this.from.toString()); }
+          if (this.to != null) { builder.to(this.to.toString()); }
+          return builder;
+        });
+    
+    return NestedQuery.of(builder -> builder
+        .path(Index.FIELD_REQUEST_NAME)
+        .query(innerBuilder -> innerBuilder.range(rangeQuery))
+        .scoreMode(ChildScoreMode.Max));
   }
 
 }
