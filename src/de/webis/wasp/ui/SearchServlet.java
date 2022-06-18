@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 import de.webis.wasp.index.Index;
-import de.webis.wasp.index.Query;
+import de.webis.wasp.index.WaspQuery;
 import de.webis.wasp.index.Result;
 import de.webis.wasp.index.ResultsFetcher;
 import jakarta.servlet.ServletConfig;
@@ -82,7 +82,7 @@ public class SearchServlet extends HttpServlet {
       final HttpServletRequest request, final HttpServletResponse response)
   throws ServletException, IOException {
     response.setContentType("text/html");
-    final Query query = this.getQuery(request);
+    final WaspQuery query = this.getQuery(request);
     final TimeZone timezone = this.getClientTimezone(request);
     if (query == null) {
       this.renderer.render(
@@ -98,12 +98,12 @@ public class SearchServlet extends HttpServlet {
     }
   };
   
-  protected Query getQuery(final HttpServletRequest request) {
+  protected WaspQuery getQuery(final HttpServletRequest request) {
     final String terms = request.getParameter(REQUEST_PARAMETER_TERMS);
     if (terms == null) { return null; }
 
     final TimeZone timezone = this.getClientTimezone(request);
-    final Query query = Query.of(terms);
+    final WaspQuery query = WaspQuery.of(terms);
     final Instant from = this.parseInstantFromGet(
         request.getParameter(REQUEST_PARAMETER_FROM), timezone);
     if (from != null) { query.from(from); }
@@ -113,7 +113,7 @@ public class SearchServlet extends HttpServlet {
 
     final HttpSession session = request.getSession();
     synchronized (session) {
-      final Query oldQuery = (Query) session.getAttribute(SESSION_QUERY);
+      final WaspQuery oldQuery = (WaspQuery) session.getAttribute(SESSION_QUERY);
       if (query == null || !query.equals(oldQuery)) {
         session.setAttribute(SESSION_QUERY, query);
         session.removeAttribute(SESSION_RESULTS);
@@ -143,7 +143,7 @@ public class SearchServlet extends HttpServlet {
   }
   
   protected ResultsFetcher getResults(
-      final HttpServletRequest request, final Query query)
+      final HttpServletRequest request, final WaspQuery query)
   throws IOException {
     final HttpSession session = request.getSession();
     synchronized (session) {

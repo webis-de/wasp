@@ -28,7 +28,7 @@ public class ResultsFetcher {
   
   protected final Index index;
 
-  protected final Query query;
+  protected final WaspQuery query;
 
   protected final int pageSize;
 
@@ -37,7 +37,7 @@ public class ResultsFetcher {
   /////////////////////////////////////////////////////////////////////////////
   
   public ResultsFetcher(
-      final Index index, final Query query, final int pageSize) {
+      final Index index, final WaspQuery query, final int pageSize) {
     if (index == null) { throw new NullPointerException("index"); }
     if (query == null) { throw new NullPointerException("query"); }
     if (pageSize < 1) {

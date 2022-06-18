@@ -8,7 +8,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.NestedQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 
-public class Query {
+public class WaspQuery {
   
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
@@ -23,28 +23,28 @@ public class Query {
   /////////////////////////////////////////////////////////////////////////////
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
-  
-  protected Query(final String terms) {
+
+  protected WaspQuery(final String terms) {
     if (terms == null) { throw new NullPointerException("terms"); }
     this.terms = terms;
     this.from = null;
     this.to = null;
   }
   
-  public static Query of(final String terms) {
-    return new Query(terms);
+  public static WaspQuery of(final String terms) {
+    return new WaspQuery(terms);
   }
   
   /////////////////////////////////////////////////////////////////////////////
   // SETTERS
   /////////////////////////////////////////////////////////////////////////////
   
-  public Query from(final Instant from) {
+  public WaspQuery from(final Instant from) {
     this.from = from;
     return this;
   }
   
-  public Query to(final Instant to) {
+  public WaspQuery to(final Instant to) {
     this.to = to;
     return this;
   }
@@ -72,8 +72,8 @@ public class Query {
   @Override
   public boolean equals(final Object obj) {
     if (obj == null) { return false; }
-    if (obj instanceof Query) {
-      final Query other = (Query) obj;
+    if (obj instanceof WaspQuery) {
+      final WaspQuery other = (WaspQuery) obj;
       
       if (!this.terms.equals(other.terms)) { return false; }
       if ((this.from == null && other.from != null)
