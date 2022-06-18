@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.text.StringEscapeUtils;
 
-import de.webis.wasp.index.WaspQuery;
+import de.webis.wasp.index.Query;
 import de.webis.wasp.index.Result;
 
 /**
@@ -106,7 +106,7 @@ public class ResultPageRenderer {
    * @param timezone Time zone of the user client
    */
   public void render(final PrintWriter output,
-      final WaspQuery query,
+      final Query query,
       final List<Result> page, final int pageNumber, final boolean isLastPage,
       final Locale locale, final TimeZone timezone) {
     this.renderHeader(output, locale, query);
@@ -126,7 +126,7 @@ public class ResultPageRenderer {
   /////////////////////////////////////////////////////////////////////////////
   
   protected void renderHeader(final PrintWriter output,
-      final Locale locale, final WaspQuery query) {
+      final Locale locale, final Query query) {
     final String title = this.getTitle(query);
     output.append(String.format(
         "<!DOCTYPE html>\n" +
@@ -165,7 +165,7 @@ public class ResultPageRenderer {
   }
   
   protected void renderQueryBox(final PrintWriter output,
-      final WaspQuery query, final TimeZone timezone) {
+      final Query query, final TimeZone timezone) {
     String terms = "";
     String from = "";
     String to = "";
@@ -222,7 +222,7 @@ public class ResultPageRenderer {
   }
   
   protected void renderQueryConfirmation(
-      final PrintWriter output, final WaspQuery query,
+      final PrintWriter output, final Query query,
       final int pageNumber, final TimeZone timezone) {
     output.append(String.format(
         "<div class='current-query'>\n" +
@@ -286,7 +286,7 @@ public class ResultPageRenderer {
   }
   
   protected void renderPagination(
-      final PrintWriter output, final WaspQuery query,
+      final PrintWriter output, final Query query,
       final int pageNumber, final boolean isLastPage,
       final TimeZone timezone) {
     final String hrefPrefix = this.getPaginationHrefPrefix(query, timezone);
@@ -321,7 +321,7 @@ public class ResultPageRenderer {
     );
   }
   
-  protected String getTitle(final WaspQuery query) {
+  protected String getTitle(final Query query) {
     final StringBuilder titleBuilder = new StringBuilder();
     titleBuilder.append("Web Archive Search Personalized");
     if (query != null) {
@@ -331,7 +331,7 @@ public class ResultPageRenderer {
   }
   
   protected String getPaginationHrefPrefix(
-      final WaspQuery query, final TimeZone timezone) {
+      final Query query, final TimeZone timezone) {
     final StringBuilder hrefPrefixBuilder = new StringBuilder();
     try {
       hrefPrefixBuilder.append('?')

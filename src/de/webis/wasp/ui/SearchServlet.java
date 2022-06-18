@@ -3,12 +3,12 @@ package de.webis.wasp.ui;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.TimeZone;
 
 import de.webis.wasp.index.Index;
-import de.webis.wasp.index.WaspQuery;
+import de.webis.wasp.index.Query;
 import de.webis.wasp.index.Result;
-import de.webis.wasp.index.ResultsFetcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -16,17 +16,29 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-public class SearchServlet extends HttpServlet {
+/**
+ * Servlet for the search service.
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ *
+ */
+public class SearchServlet
+extends HttpServlet {
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // CONSTANTS
+  /////////////////////////////////////////////////////////////////////////////
 
   private static final long serialVersionUID = -5259242888271066638L;
-  
-  public static final String SERVLET_PATH = "search";
-  
+
+  /////////////////////////////////////////////////////////////////////////////
+  // CONFIGURATION
+
   public static final String INIT_PARAMETER_INDEX_PORT = "index.port";
 
   public static final int DEFAULT_INDEX_PORT = Index.DEFAULT_PORT;
   
-  public static final String INIT_PARAMETER_PAGE_SIZE = "index.port";
+  public static final String INIT_PARAMETER_PAGE_SIZE = "page.size";
 
   public static final int DEFAULT_PAGE_SIZE = 10;
   
@@ -37,6 +49,11 @@ public class SearchServlet extends HttpServlet {
   public static final String INIT_PARAMETER_REPLAY_COLLECTION = "replay.collection";
 
   public static final String DEFAULT_REPLAY_COLLECTION = "archive";
+
+  /////////////////////////////////////////////////////////////////////////////
+  // REQUEST
+  
+  public static final String SERVLET_PATH = "search";
   
   public static final String REQUEST_PARAMETER_TERMS = "terms";
   
@@ -48,16 +65,30 @@ public class SearchServlet extends HttpServlet {
   
   public static final String REQUEST_PARAMETER_PAGE_NUMBER = "page";
 
+  /////////////////////////////////////////////////////////////////////////////
+  // SESSION
+
   protected static final String SESSION_QUERY = "query";
 
   protected static final String SESSION_RESULTS = "results";
   
-  protected Index index;
+  /////////////////////////////////////////////////////////////////////////////
+  // MEMBERS
+  /////////////////////////////////////////////////////////////////////////////
   
-  protected int pageSize;
+  private Index index;
   
-  protected ResultPageRenderer renderer;
+  private int pageSize;
   
+  private ResultPageRenderer renderer;
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // CONSTRUCTION
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Creates a new servlet.
+   */
   public SearchServlet() {
     this.index = null;
     this.pageSize = 0;
@@ -67,51 +98,123 @@ public class SearchServlet extends HttpServlet {
   @Override
   public void init(final ServletConfig config) throws ServletException {
     this.index = new Index(
-        SearchServlet.getParameter(config,
+        SearchServlet.getParameterValue(config,
             INIT_PARAMETER_INDEX_PORT, DEFAULT_INDEX_PORT));
-    this.pageSize = SearchServlet.getParameter(config,
+    this.pageSize = SearchServlet.getParameterValue(config,
         INIT_PARAMETER_PAGE_SIZE, DEFAULT_PAGE_SIZE);
     this.renderer = new ResultPageRenderer(
-        SearchServlet.getParameter(config,
+        SearchServlet.getParameterValue(config,
             INIT_PARAMETER_REPLAY_PORT, DEFAULT_REPLAY_PORT),
-        SearchServlet.getParameter(config,
+        SearchServlet.getParameterValue(config,
             INIT_PARAMETER_REPLAY_COLLECTION, DEFAULT_REPLAY_COLLECTION));
   }
   
+  /////////////////////////////////////////////////////////////////////////////
+  // GETTERS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets the index client.
+   * @return The client
+   */
+  protected Index getIndex() {
+    return this.index;
+  }
+
+  /**
+   * Gets the page size to render.
+   * @return The page size
+   */
+  protected int getPageSize() {
+    return this.pageSize;
+  }
+
+  /**
+   * Gets the renderer for rendering result pages.
+   * @return The renderer
+   */
+  protected ResultPageRenderer getRenderer() {
+    return this.renderer;
+  }
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // FUNCTIONALITY
+  /////////////////////////////////////////////////////////////////////////////
+
+  @Override
   protected void doGet(
       final HttpServletRequest request, final HttpServletResponse response)
   throws ServletException, IOException {
+    final int pageSize = this.getPageSize();
+
     response.setContentType("text/html");
-    final WaspQuery query = this.getQuery(request);
-    final TimeZone timezone = this.getClientTimezone(request);
+    final Query query = SearchServlet.getQuery(request);
+    final TimeZone timezone = SearchServlet.getClientTimeZone(request);
     if (query == null) {
-      this.renderer.render(
+      this.getRenderer().render(
           response.getWriter(), request.getLocale(), timezone);
     } else {
-      final ResultsFetcher results = this.getResults(request, query);
-      final int pageNumber = this.getPageNumber(request);
-      final List<Result> resultList = results.fetch(pageNumber);
-      final boolean isLastPage = resultList.size() < this.pageSize;
-      this.renderer.render(response.getWriter(),
-          query, resultList, pageNumber, isLastPage,
+      final List<Result> results = this.getResults(request, query);
+      final int numResults = results.size();
+      final int pageNumber = SearchServlet.getPageNumber(request);
+      final int fromResult = Math.min((pageNumber - 1) * pageSize, numResults);
+      final int toResult = Math.min(pageNumber * pageSize, numResults);
+      final List<Result> paginatedResults =
+          results.subList(fromResult, toResult);
+
+      final boolean isLastPage = (toResult == numResults);
+      this.getRenderer().render(response.getWriter(),
+          query, paginatedResults, pageNumber, isLastPage,
           request.getLocale(), timezone);
     }
   };
   
-  protected WaspQuery getQuery(final HttpServletRequest request) {
+  /////////////////////////////////////////////////////////////////////////////
+  // HELPERS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets the results for the specified query.
+   * @param request The request to the servlet
+   * @param query The query
+   * @return The results for the query
+   * @throws IOException On searching the index
+   */
+  protected List<Result> getResults(
+      final HttpServletRequest request, final Query query)
+  throws IOException {
+    final HttpSession session = request.getSession();
+    synchronized (session) {
+      @SuppressWarnings("unchecked")
+      List<Result> results =
+          (List<Result>) session.getAttribute(SESSION_RESULTS);
+      if (results == null) {
+        results = this.getIndex().search(query);
+        session.setAttribute(SESSION_RESULTS, results);
+      }
+      return results;
+    }
+  }
+
+  /**
+   * Gets the query for a request.
+   * @param request The request to the servlet
+   * @return The query or <code>null</code> for none
+   */
+  protected static Query getQuery(final HttpServletRequest request) {
     final String terms = request.getParameter(REQUEST_PARAMETER_TERMS);
     if (terms == null) { return null; }
 
-    final TimeZone timezone = this.getClientTimezone(request);
-    final Instant from = this.parseInstantFromGet(
+    final TimeZone timezone = SearchServlet.getClientTimeZone(request);
+    final Instant from = SearchServlet.parseInstant(
         request.getParameter(REQUEST_PARAMETER_FROM), timezone);
-    final Instant to = this.parseInstantFromGet(
+    final Instant to = SearchServlet.parseInstant(
         request.getParameter(REQUEST_PARAMETER_TO), timezone);
-    final WaspQuery query = new WaspQuery(terms, from, to);
+    final Query query = new Query(terms, from, to);
 
     final HttpSession session = request.getSession();
     synchronized (session) {
-      final WaspQuery oldQuery = (WaspQuery) session.getAttribute(SESSION_QUERY);
+      final Query oldQuery = (Query) session.getAttribute(SESSION_QUERY);
       if (query == null || !query.equals(oldQuery)) {
         session.setAttribute(SESSION_QUERY, query);
         session.removeAttribute(SESSION_RESULTS);
@@ -119,42 +222,13 @@ public class SearchServlet extends HttpServlet {
       return query;
     }
   }
-  
-  protected TimeZone getClientTimezone(
-      final HttpServletRequest request) {
-    final String value = request.getParameter(REQUEST_PARAMETER_TIMEZONE);
-    if (value == null) {
-      return TimeZone.getDefault();
-    } else {
-      return TimeZone.getTimeZone(value);
-    } 
-  }
-  
-  protected Instant parseInstantFromGet(
-      final String getParameter, final TimeZone timezone) {
-    if (getParameter == null || getParameter.isEmpty()) {
-      return null;
-    } else {
-      return Instant.from(ResultPageRenderer.DATE_TIME_PICKER_FORMATTER
-          .withZone(timezone.toZoneId()).parse(getParameter));
-    }
-  }
-  
-  protected ResultsFetcher getResults(
-      final HttpServletRequest request, final WaspQuery query)
-  throws IOException {
-    final HttpSession session = request.getSession();
-    synchronized (session) {
-      ResultsFetcher results = (ResultsFetcher) session.getAttribute(SESSION_RESULTS);
-      if (results == null) {
-        results =  this.index.query(query, this.pageSize);
-        session.setAttribute(SESSION_RESULTS, results);
-      }
-      return results;
-    }
-  }
-  
-  protected int getPageNumber(final HttpServletRequest request) {
+
+  /**
+   * Gets the page number for a request.
+   * @param request The request to the servlet
+   * @return The page number (1 by default)
+   */
+  protected static int getPageNumber(final HttpServletRequest request) {
     final String pageNumberString =
         request.getParameter(REQUEST_PARAMETER_PAGE_NUMBER);
     if (pageNumberString == null) {
@@ -163,18 +237,64 @@ public class SearchServlet extends HttpServlet {
       return Integer.parseInt(pageNumberString);
     }
   }
-  
-  protected static String getParameter(final ServletConfig config,
-      final String parameter) {
-    return SearchServlet.getParameter(config, parameter, null);
+
+  /**
+   * Gets the time zone of the browser.
+   * @param request The request to the servlet
+   * @return The guessed time zone
+   */
+  protected static TimeZone getClientTimeZone(
+      final HttpServletRequest request) {
+    final String value = request.getParameter(REQUEST_PARAMETER_TIMEZONE);
+    if (value == null) {
+      return TimeZone.getDefault();
+    } else {
+      return TimeZone.getTimeZone(value);
+    } 
   }
-  
-  protected static String getParameter(final ServletConfig config,
+
+  /**
+   * Parses an instant from a request parameter.
+   * @param value The parameter value (may be <code>null</code>)
+   * @param timeZone The time zone of the browser
+   * @return The instant or <code>null</code> for none
+   */
+  protected static Instant parseInstant(
+      final String value, final TimeZone timeZone) {
+    if (value == null || value.isEmpty()) {
+      return null;
+    } else {
+      return Instant.from(ResultPageRenderer.DATE_TIME_PICKER_FORMATTER
+          .withZone(timeZone.toZoneId()).parse(value));
+    }
+  }
+
+  /**
+   * Gets the value for a parameter.
+   * @param config The servlet configuration
+   * @param parameter The parameter name
+   * @return The value
+   * @throws NoSuchElementException If no value is provided
+   */
+  protected static String getParameterValue(final ServletConfig config,
+      final String parameter) {
+    return SearchServlet.getParameterValue(config, parameter, null);
+  }
+
+  /**
+   * Gets the value for a parameter.
+   * @param config The servlet configuration
+   * @param parameter The parameter name
+   * @param defaultValue The default value or <code>null</code> for none
+   * @return The value (may be the default)
+   * @throws NoSuchElementException If no value and no default value is provided
+   */
+  protected static String getParameterValue(final ServletConfig config,
       final String parameter, final String defaultValue) {
     final String value = config.getInitParameter(parameter);
     if (value == null) {
       if (defaultValue == null) {
-        throw new NullPointerException(parameter);
+        throw new NoSuchElementException(parameter);
       } else {
         return defaultValue;
       }
@@ -182,8 +302,15 @@ public class SearchServlet extends HttpServlet {
       return value;
     }
   }
-  
-  protected static int getParameter(final ServletConfig config,
+
+  /**
+   * Gets the value for a parameter as integer.
+   * @param config The servlet configuration
+   * @param parameter The parameter name
+   * @param defaultValue The default value
+   * @return The value (may be the default)
+   */
+  protected static int getParameterValue(final ServletConfig config,
       final String parameter, final int defaultValue) {
     final String value = config.getInitParameter(parameter);
     if (value == null) {
