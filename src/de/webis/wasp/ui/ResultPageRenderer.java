@@ -242,9 +242,10 @@ public class ResultPageRenderer {
   protected void renderResult(
       final PrintWriter output, final Result result,
       final TimeZone timezone) {
-    final String title = StringEscapeUtils.escapeHtml4(result.getTitle());
+    final String title = StringEscapeUtils.escapeHtml4(
+        result.getResponse().getTitle());
     final String replayUri = this.getReplayUri(result);
-    final String liveUri = result.getUri();
+    final String liveUri = result.getMatchedRequest().getUri();
 
     output.append(String.format(
         "<li class='result'>\n" +
@@ -256,8 +257,8 @@ public class ResultPageRenderer {
         "  <span class='snippet'>%s</span>\n" +
         "</li>\n",
         replayUri, title, replayUri, liveUri,
-        this.getDisplayUri(result.getUri()),
-        this.getHtmlTime(result.getInstant(), timezone),
+        this.getDisplayUri(liveUri),
+        this.getHtmlTime(result.getMatchedRequest().getDate(), timezone),
         this.processSnippet(result.getSnippet())));
   }
   
@@ -357,7 +358,8 @@ public class ResultPageRenderer {
     return String.format(
         "http://localhost:%d/%s/%s/%s",
         this.replayPort, this.replayCollection,
-        this.getReplayTime(result.getInstant()), result.getUri());
+        this.getReplayTime(result.getMatchedRequest().getDate()),
+        result.getMatchedRequest().getUri());
   }
   
   protected String getReplayTime(final Instant instant) {
