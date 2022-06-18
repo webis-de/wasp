@@ -1,6 +1,7 @@
 package de.webis.wasp.index;
 
 import java.time.Instant;
+import java.util.Objects;
 
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
@@ -11,42 +12,30 @@ import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 public class WaspQuery {
   
   /////////////////////////////////////////////////////////////////////////////
+  // CONSTANTS
+  /////////////////////////////////////////////////////////////////////////////
+
+  public static final float TITLE_BOOST = 2.0f;
+  
+  /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
   /////////////////////////////////////////////////////////////////////////////
   
-  protected final String terms;
+  private final String terms;
   
-  protected Instant from;
+  private Instant from;
   
-  protected Instant to;
+  private Instant to;
   
   /////////////////////////////////////////////////////////////////////////////
   // CONSTRUCTORS
   /////////////////////////////////////////////////////////////////////////////
 
-  protected WaspQuery(final String terms) {
-    if (terms == null) { throw new NullPointerException("terms"); }
-    this.terms = terms;
-    this.from = null;
-    this.to = null;
-  }
-  
-  public static WaspQuery of(final String terms) {
-    return new WaspQuery(terms);
-  }
-  
-  /////////////////////////////////////////////////////////////////////////////
-  // SETTERS
-  /////////////////////////////////////////////////////////////////////////////
-  
-  public WaspQuery from(final Instant from) {
+  public WaspQuery(
+      final String terms, final Instant from, final Instant to) {
+    this.terms = Objects.requireNonNull(terms);
     this.from = from;
-    return this;
-  }
-  
-  public WaspQuery to(final Instant to) {
     this.to = to;
-    return this;
   }
   
   /////////////////////////////////////////////////////////////////////////////
@@ -74,14 +63,20 @@ public class WaspQuery {
     if (obj == null) { return false; }
     if (obj instanceof WaspQuery) {
       final WaspQuery other = (WaspQuery) obj;
-      
-      if (!this.terms.equals(other.terms)) { return false; }
-      if ((this.from == null && other.from != null)
-          || (this.from != null && !this.from.equals(other.from))) {
+
+      if (!this.getTerms().equals(other.getTerms())) { return false; }
+
+      final Instant thisFrom = this.getFrom();
+      final Instant otherFrom = other.getFrom();
+      if ((thisFrom == null && otherFrom != null)
+          || (thisFrom != null && !thisFrom.equals(otherFrom))) {
         return false;
       }
-      if ((this.to == null && other.to != null)
-          || (this.to != null && !this.to.equals(other.to))) {
+
+      final Instant thisTo = this.getTo();
+      final Instant otherTo = other.getTo();
+      if ((thisTo == null && otherTo != null)
+          || (thisTo != null && !thisTo.equals(otherTo))) {
         return false;
       }
       return true;
@@ -107,16 +102,19 @@ public class WaspQuery {
                 .field(ResponseRecord.FIELD_TITLE)
                 .query(this.getTerms())
                 .operator(Operator.And)
-                .boost(2.0f))));
+                .boost(TITLE_BOOST))));
   }
   
   protected NestedQuery getTimeQueryBuilder() {
+    final Instant from = this.getFrom();
+    final Instant to = this.getTo();
+
     final RangeQuery rangeQuery =
         RangeQuery.of(builder -> {
           builder.field(
               ResponseRecord.FIELD_REQUESTS + "." + RequestRecord.FIELD_DATE);
-          if (this.from != null) { builder.from(this.from.toString()); }
-          if (this.to != null) { builder.to(this.to.toString()); }
+          if (from != null) { builder.from(from.toString()); }
+          if (to != null) { builder.to(to.toString()); }
           return builder;
         });
     

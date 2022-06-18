@@ -103,13 +103,11 @@ public class SearchServlet extends HttpServlet {
     if (terms == null) { return null; }
 
     final TimeZone timezone = this.getClientTimezone(request);
-    final WaspQuery query = WaspQuery.of(terms);
     final Instant from = this.parseInstantFromGet(
         request.getParameter(REQUEST_PARAMETER_FROM), timezone);
-    if (from != null) { query.from(from); }
     final Instant to = this.parseInstantFromGet(
         request.getParameter(REQUEST_PARAMETER_TO), timezone);
-    if (to != null) { query.to(to); }
+    final WaspQuery query = new WaspQuery(terms, from, to);
 
     final HttpSession session = request.getSession();
     synchronized (session) {
