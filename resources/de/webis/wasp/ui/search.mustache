@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head data-accept-language='{{locale}}'>
+  <meta charset='utf-8'/>
+  <title>WASP{{#query}}: {{terms}}{{/query}}</title>
+  <link rel='stylesheet' href='css/bootstrap.min.css'/>
+  <link rel='stylesheet' href='css/bootstrap-datetimepicker.min.css'/>
+  <link rel='stylesheet' href='css/search.css'/>
+</head>
+<body>
+<nav class='navbar navbar-default'>
+  <div class='container'>
+    <div class='navbar-header'>
+      <a class='navbar-brand' href='#'>Web Archive Search Personalized</a>
+    </div>
+  </div>
+</nav>
+<div class='container'>
+<form method='GET' class='form-group'>
+  <div class='datetime-form'>
+    <div class='input-group date'>
+      <span class='input-group-btn' data-button-target-name='from'>
+        <span class='btn btn-primary disabled'>From:</span>
+        <button type='button' class='btn btn-default' data-time-offset=''>beginning</button>
+        <button type='button' class='btn btn-default' data-time-offset='months' data-time-offset-amount='1'>month ago</button>
+        <button type='button' class='btn btn-default' data-time-offset='weeks' data-time-offset-amount='1'>week ago</button>
+        <button type='button' class='btn btn-default' data-time-offset='days' data-time-offset-amount='1'>day ago</button>
+      </span>
+      <input type='text' class='form-control' name='from' value='{{#query.from.timePickerValue}}{{.}}{{/query.from.timePickerValue}}' placeholder='beginning'>
+      <span class='input-group-addon'>
+        <span class='glyphicon glyphicon-calendar'></span>
+      </span>
+    </div>
+    <div class='input-group date'>
+      <span class='input-group-btn' data-button-target-name='to'>
+        <span class='btn btn-primary disabled'>Until:</span>
+        <button type='button' class='btn btn-default' data-time-offset='months' data-time-offset-amount='1'>month ago</button>
+        <button type='button' class='btn btn-default' data-time-offset='weeks' data-time-offset-amount='1'>week ago</button>
+        <button type='button' class='btn btn-default' data-time-offset='days' data-time-offset-amount='1'>day ago</button>
+        <button type='button' class='btn btn-default' data-time-offset=''>now</button>
+      </span>
+      <input type='text' class='form-control' name='to' value='{{#query.to.timePickerValue}}{{.}}{{/query.to.timePickerValue}}' placeholder='now'>
+      <span class='input-group-addon'>
+        <span class='glyphicon glyphicon-calendar'></span>
+      </span>
+    </div>
+  </div>
+  <div class='input-group'>
+    <input type='text' class='form-control' name='terms' placeholder='Query' value='{{#query.terms}}{{.}}{{/query.terms}}'/>
+    <span class='input-group-btn'>
+      <button type='submit' class='btn btn-primary'>Go!</button>
+    </span>
+  </div>
+  <input type='hidden' name='timezone'/>
+</form>
+{{#query}}
+<div class='current-query'>
+  Page <span class='page-number'>{{pageNumber}}</span>
+  for "<em class='query'>{{terms}}</em>"
+  from {{#from.iso}}<time datetime='{{.}}'>{{/from.iso}}{{from.text}}{{#from.iso}}</time>{{/from.iso}}
+  until {{#to.iso}}<time datetime='{{.}}'>{{/to.iso}}{{to.text}}{{#to.iso}}</time>{{/to.iso}}
+</div>
+{{/query}}
+<ol class='results'>
+{{#results}}
+<li class='result'>
+  <div class='links'>
+    <a href='{{{replayUri}}}' class='title'>{{title}}</a>
+    <a href='{{{replayUri}}}' class='archive'>archive</a>
+    <a href='{{{liveUri}}}' class='live'>live</a>
+  <span class='meta'><span class='uri'>{{liveUriShortened}}</span> <time datetime='{{date.iso}}'>{{date.timePickerValue}}<time></span>
+  <span class='snippet'>{{snippet}}</span>
+</li>
+{{/results}}
+</ol>
+<nav class='footer'>
+<ul class='pagination'>
+{{#pagination}}
+  <li class='page{{#isActive}} active{{/isActive}}{{#isDisabled}} disabled{{/isDisabled}}'><a href='{{{link}}}'>{{{text}}}</a></li>
+{{/pagination}}
+</ul>
+</nav>
+</div>
+<script type='text/javascript' src='js/jquery.min.js'></script>
+<script type='text/javascript' src='js/moment.min.js'></script>
+<script type='text/javascript' src='js/bootstrap.min.js'></script>
+<script type='text/javascript' src='js/bootstrap-datetimepicker.min.js'></script>
+<script type='text/javascript' src='js/search.js'></script>
+</body>
+</html>

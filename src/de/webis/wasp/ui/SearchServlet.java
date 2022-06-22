@@ -1,10 +1,15 @@
 package de.webis.wasp.ui;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.TimeZone;
+
+import com.github.mustachejava.DefaultMustacheFactory;
+import com.github.mustachejava.Mustache;
+import com.github.mustachejava.MustacheFactory;
 
 import de.webis.wasp.index.Index;
 import de.webis.wasp.index.Query;
@@ -42,9 +47,9 @@ extends HttpServlet {
 
   public static final int DEFAULT_PAGE_SIZE = 10;
   
-  public static final String INIT_PARAMETER_REPLAY_PORT = "replay.port";
+  public static final String INIT_PARAMETER_REPLAY_SERVER = "replay.server";
 
-  public static final int DEFAULT_REPLAY_PORT = 8002;
+  public static final String DEFAULT_REPLAY_SERVER = "https://localhost:8002";
   
   public static final String INIT_PARAMETER_REPLAY_COLLECTION = "replay.collection";
 
@@ -75,12 +80,16 @@ extends HttpServlet {
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
   /////////////////////////////////////////////////////////////////////////////
+
+  private final Mustache pageRenderer;
   
   private Index index;
   
   private int pageSize;
-  
-  private ResultPageRenderer renderer;
+
+  private String replayServer;
+
+  private String replayCollection;
   
   /////////////////////////////////////////////////////////////////////////////
   // CONSTRUCTION
@@ -90,9 +99,14 @@ extends HttpServlet {
    * Creates a new servlet.
    */
   public SearchServlet() {
+    final MustacheFactory factory = new DefaultMustacheFactory();
+    this.pageRenderer = factory.compile(new InputStreamReader(
+        SearchServlet.class.getResourceAsStream("search.mustache")),
+        "search.mustache");
     this.index = null;
     this.pageSize = 0;
-    this.renderer = null;
+    this.replayServer = null;
+    this.replayCollection = null;
   }
   
   @Override
@@ -102,16 +116,23 @@ extends HttpServlet {
             INIT_PARAMETER_INDEX_PORT, DEFAULT_INDEX_PORT));
     this.pageSize = SearchServlet.getParameterValue(config,
         INIT_PARAMETER_PAGE_SIZE, DEFAULT_PAGE_SIZE);
-    this.renderer = new ResultPageRenderer(
-        SearchServlet.getParameterValue(config,
-            INIT_PARAMETER_REPLAY_PORT, DEFAULT_REPLAY_PORT),
-        SearchServlet.getParameterValue(config,
-            INIT_PARAMETER_REPLAY_COLLECTION, DEFAULT_REPLAY_COLLECTION));
+    this.replayServer =  SearchServlet.getParameterValue(config,
+        INIT_PARAMETER_REPLAY_SERVER, DEFAULT_REPLAY_SERVER);
+    this.replayCollection =  SearchServlet.getParameterValue(config,
+        INIT_PARAMETER_REPLAY_COLLECTION, DEFAULT_REPLAY_COLLECTION);
   }
   
   /////////////////////////////////////////////////////////////////////////////
   // GETTERS
   /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets the page renderer.
+   * @return The renderer
+   */
+  public Mustache getPageRenderer() {
+    return this.pageRenderer;
+  }
 
   /**
    * Gets the index client.
@@ -125,16 +146,24 @@ extends HttpServlet {
    * Gets the page size to render.
    * @return The page size
    */
-  protected int getPageSize() {
+  public int getPageSize() {
     return this.pageSize;
   }
 
   /**
-   * Gets the renderer for rendering result pages.
-   * @return The renderer
+   * Gets the address (including protocol and host) of the replay server. 
+   * @return The URI
    */
-  protected ResultPageRenderer getRenderer() {
-    return this.renderer;
+  public String getReplayServer() {
+    return this.replayServer;
+  }
+
+  /**
+   * Gets the name of the collection to replay from.
+   * @return The name
+   */
+  public String getReplayCollection() {
+    return this.replayCollection;
   }
   
   /////////////////////////////////////////////////////////////////////////////
@@ -145,33 +174,48 @@ extends HttpServlet {
   protected void doGet(
       final HttpServletRequest request, final HttpServletResponse response)
   throws ServletException, IOException {
-    final int pageSize = this.getPageSize();
+    final UiPage page = this.getPage(request);
 
     response.setContentType("text/html");
+    this.getPageRenderer().execute(response.getWriter(), page);
+  };
+  
+  /////////////////////////////////////////////////////////////////////////////
+  // HELPERS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Gets an implementation of the search page model for rendering.
+   * @param request The request to the servlet
+   * @return The page model
+   * @throws IOException On searching the index
+   */
+  protected UiPage getPage(final HttpServletRequest request) 
+  throws IOException {
+    final int pageSize = this.getPageSize();
+
     final Query query = SearchServlet.getQuery(request);
     final TimeZone timezone = SearchServlet.getClientTimeZone(request);
     if (query == null) {
-      this.getRenderer().render(
-          response.getWriter(), request.getLocale(), timezone);
+      return new UiPage(
+          this.getReplayServer(), this.getReplayCollection(),
+          request.getLocale(), timezone);
     } else {
       final List<Result> results = this.getResults(request, query);
       final int numResults = results.size();
+      final int numPages = (numResults - 1) / pageSize + 1;
       final int pageNumber = SearchServlet.getPageNumber(request);
       final int fromResult = Math.min((pageNumber - 1) * pageSize, numResults);
       final int toResult = Math.min(pageNumber * pageSize, numResults);
       final List<Result> paginatedResults =
           results.subList(fromResult, toResult);
 
-      final boolean isLastPage = (toResult == numResults);
-      this.getRenderer().render(response.getWriter(),
-          query, paginatedResults, pageNumber, isLastPage,
+      return new UiPage(
+          this.getReplayServer(), this.getReplayCollection(),
+          query, paginatedResults, pageNumber, numPages,
           request.getLocale(), timezone);
     }
-  };
-  
-  /////////////////////////////////////////////////////////////////////////////
-  // HELPERS
-  /////////////////////////////////////////////////////////////////////////////
+  }
 
   /**
    * Gets the results for the specified query.
@@ -264,7 +308,7 @@ extends HttpServlet {
     if (value == null || value.isEmpty()) {
       return null;
     } else {
-      return Instant.from(ResultPageRenderer.DATE_TIME_PICKER_FORMATTER
+      return Instant.from(UiPage.UiInstant.DATE_TIME_PICKER_FORMATTER
           .withZone(timeZone.toZoneId()).parse(value));
     }
   }

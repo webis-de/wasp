@@ -1,10 +1,12 @@
 package de.webis.wasp.ui;
 
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,7 +14,13 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 
+import com.github.mustachejava.DefaultMustacheFactory;
+import com.github.mustachejava.Mustache;
+import com.github.mustachejava.MustacheFactory;
+
 import de.webis.wasp.index.Query;
+import de.webis.wasp.index.RequestRecord;
+import de.webis.wasp.index.ResponseRecord;
 import de.webis.wasp.index.Result;
 
 /**
@@ -88,7 +96,7 @@ public class UiPage {
     this.replayServer = Objects.requireNonNull(replayServer);
     this.replayCollection = Objects.requireNonNull(replayCollection);
     this.locale = locale.toString();
-    this.query = new UiQuery(query, timeZone);
+    this.query = new UiQuery(query, pageNumber, timeZone);
 
     final List<UiResult> results = new ArrayList<>();
     for (final Result result : paginatedResults) {
@@ -98,17 +106,40 @@ public class UiPage {
     this.results = Collections.unmodifiableList(results);
 
     final List<UiPaginationLink> pagination = new ArrayList<>();
+    final StringBuilder hrefBaseBuilder = new StringBuilder();
+    try {
+      hrefBaseBuilder.append('?')
+        .append(SearchServlet.REQUEST_PARAMETER_TERMS).append('=')
+        .append(URLEncoder.encode(query.getTerms(), "UTF-8"));
+      if (query.getFrom() != null) {
+        hrefBaseBuilder.append('&')
+          .append(SearchServlet.REQUEST_PARAMETER_FROM).append('=')
+          .append(URLEncoder.encode(this.query.from.timePickerValue, "UTF-8"));
+      }
+      if (query.getTo() != null) {
+        hrefBaseBuilder.append('&')
+          .append(SearchServlet.REQUEST_PARAMETER_TO).append('=')
+          .append(URLEncoder.encode(this.query.to.timePickerValue, "UTF-8"));
+      }
+      hrefBaseBuilder.append("&page=");
+    } catch (final UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
+    final String hrefBase = hrefBaseBuilder.toString();
     // to first
     pagination.add(new UiPaginationLink(
-        1, "&laquo;", false, pageNumber == 1));
+        1, "&laquo;", hrefBase + "1",
+        false, pageNumber == 1));
     // pages
     for (int p = 1; p <= numPages; ++p) {
       pagination.add(new UiPaginationLink(
-          p, String.valueOf(p), p == pageNumber, false));
+          p, String.valueOf(p), hrefBase + p,
+          p == pageNumber, false));
     }
     // to last
     pagination.add(new UiPaginationLink(
-        numPages, "&raquo;", false, pageNumber == numPages));
+        numPages, "&raquo;", hrefBase + numPages,
+        false, pageNumber == numPages));
     this.pagination = Collections.unmodifiableList(pagination);
   }
   
@@ -134,6 +165,8 @@ public class UiPage {
     public final UiInstant from;
 
     public final UiInstant to;
+
+    public final int pageNumber;
     
     ///////////////////////////////////////////////////////////////////////////
     // CONSTRUCTION
@@ -144,7 +177,8 @@ public class UiPage {
      * @param query The original WASP query
      * @param timeZone The time zone of the user client
      */
-    protected UiQuery(final Query query, final TimeZone timeZone) {
+    protected UiQuery(
+        final Query query, final int pageNumber, final TimeZone timeZone) {
       this.terms = query.getTerms();
       try {
         this.termsUrl = URLEncoder.encode(this.terms, "UTF-8");
@@ -153,6 +187,7 @@ public class UiPage {
       }
       this.from = new UiInstant(query.getFrom(), timeZone, true, false);
       this.to = new UiInstant(query.getTo(), timeZone, false, true);
+      this.pageNumber = pageNumber;
     }
 
   }
@@ -218,6 +253,8 @@ public class UiPage {
       
       this.snippet = result.getSnippet();
       /*
+       * StringEscapeUtils.escapeHtml4(
+       * 
         final Pattern highlightStartPattern = Pattern.compile("&lt;em&gt;");
         final String startUnescaped =
             highlightStartPattern.matcher(htmlEscaped).replaceAll(
@@ -286,9 +323,10 @@ public class UiPage {
         }
       } else {
         this.iso = instant.toString();
-        this.timePickerValue = DATE_TIME_PICKER_FORMATTER.format(instant.plus(
-            timeZone.getOffset(instant.toEpochMilli()), ChronoUnit.MILLIS));
-        this.replayPathValue = REPLAY_FORMATTER.format(instant);
+        this.timePickerValue = DATE_TIME_PICKER_FORMATTER.format(instant
+            .atZone(timeZone.toZoneId()));
+        this.replayPathValue = REPLAY_FORMATTER.format(instant
+            .atOffset(ZoneOffset.UTC));
         this.text = this.timePickerValue;
       }
     }
@@ -311,7 +349,9 @@ public class UiPage {
 
     public final String text;
 
-    public final boolean isCurrent;
+    public final String link;
+
+    public final boolean isActive;
 
     public final boolean isDisabled;
     
@@ -323,18 +363,44 @@ public class UiPage {
      * Creates a new pagination link for a WASP page.
      * @param number The target page number
      * @param text The text to show
-     * @param isCurrent Whether this link leads to the current page
+     * @param link The link to the page
+     * @param isActive Whether this link leads to the current page
      * @param isDisabled Whether this link is disabled
      */
     public UiPaginationLink(
-        final int number, final String text,
-        final boolean isCurrent, final boolean isDisabled) {
+        final int number, final String text, final String link,
+        final boolean isActive, final boolean isDisabled) {
       this.number = number;
-      this.text = text;
-      this.isCurrent = isCurrent;
+      this.text = Objects.requireNonNull(text);
+      this.link = Objects.requireNonNull(link);
+      this.isActive = isActive;
       this.isDisabled = isDisabled;
     }
     
+  }
+
+  public static void main(String[] args) {
+    final MustacheFactory factory = new DefaultMustacheFactory();
+    final Mustache pageRenderer = factory.compile(new InputStreamReader(
+        SearchServlet.class.getResourceAsStream("search.mustache")),
+        "search.mustache");
+    final Query query = new Query("foo bar", null, Instant.now());
+    final List<Result> results = List.of(
+        new Result(0.5, "my snippet",
+            new ResponseRecord("foo", "bar", null, null),
+            new RequestRecord("https://webis.de", Instant.now())),
+        new Result(0.25, "my second snippet",
+            new ResponseRecord("foo2", "bar2", null, null),
+            new RequestRecord("https://webis.de", Instant.now())));
+    final int pageNumber = 1;
+    final int numPages = 3;
+    final UiPage page = new UiPage(
+        "https://wasp.de", "mywasp",
+        query, results, pageNumber, numPages,
+        Locale.ENGLISH, TimeZone.getDefault());
+    final StringWriter writer = new StringWriter();
+    pageRenderer.execute(writer, page);
+    System.out.println(writer.toString());
   }
 
 }
