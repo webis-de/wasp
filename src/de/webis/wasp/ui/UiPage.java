@@ -41,6 +41,8 @@ public class UiPage {
 
   public final UiQuery query;
 
+  public final List<UiResult> results;
+
   public final List<UiPaginationLink> pagination;
   
   /////////////////////////////////////////////////////////////////////////////
@@ -62,6 +64,7 @@ public class UiPage {
     this.replayCollection = Objects.requireNonNull(replayCollection);
     this.locale = locale.toString();
     this.query = null;
+    this.results = List.of();
     this.pagination = List.of();
   }
 
@@ -86,8 +89,13 @@ public class UiPage {
     this.replayCollection = Objects.requireNonNull(replayCollection);
     this.locale = locale.toString();
     this.query = new UiQuery(query, timeZone);
-    
-    // TODO UiResult
+
+    final List<UiResult> results = new ArrayList<>();
+    for (final Result result : paginatedResults) {
+      results.add(
+          new UiResult(replayServer, replayCollection, result, timeZone));
+    }
+    this.results = Collections.unmodifiableList(results);
 
     final List<UiPaginationLink> pagination = new ArrayList<>();
     // to first
@@ -145,6 +153,78 @@ public class UiPage {
       }
       this.from = new UiInstant(query.getFrom(), timeZone, true, false);
       this.to = new UiInstant(query.getTo(), timeZone, false, true);
+    }
+
+  }
+
+  /**
+   * Model for a WASP result in a user interface web page.
+   * 
+   * @author johannes.kiesel@uni-weimar.de
+   *
+   */
+  public static final class UiResult {
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // MEMBERS
+    ///////////////////////////////////////////////////////////////////////////
+    
+    public final String title;
+
+    public final UiInstant date;
+
+    public final String liveUri;
+
+    public final String liveUriShortened;
+
+    public final String replayUri;
+
+    public final String snippet;
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // CONSTRUCTION
+    ///////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Creates a new result for a WASP page.
+     * @param replayServer The URL of the replay server (including port and
+     * optional path up to the collection name)
+     * @param replayCollection The name of the collection to replay from
+     * @param result One result retrieved for the query
+     * @param timeZone The time zone of the user client
+     */
+    protected UiResult(
+        final String replayServer, final String replayCollection,
+        final Result result, final TimeZone timeZone) {
+      this.title = result.getResponse().getTitle();
+
+      this.date = new UiInstant(
+          result.getMatchedRequest().getDate(), timeZone, false, false);
+
+      this.liveUri = result.getMatchedRequest().getUri();
+      if (this.liveUri.length() <= MAX_URI_DISPLAY_LENGTH) {
+        this.liveUriShortened = this.liveUri;
+      } else {
+        final int splitIndex = (MAX_URI_DISPLAY_LENGTH - 3) / 2;
+        this.liveUriShortened = this.liveUri.substring(0, splitIndex) + "..."
+            + this.liveUri.substring(this.liveUri.length() - splitIndex);
+      }
+
+      this.replayUri = String.format("%s/%s/%s/%s",
+          Objects.requireNonNull(replayServer),
+          Objects.requireNonNull(replayCollection),
+          this.date.replayPathValue,
+          this.liveUri);
+      
+      this.snippet = result.getSnippet();
+      /*
+        final Pattern highlightStartPattern = Pattern.compile("&lt;em&gt;");
+        final String startUnescaped =
+            highlightStartPattern.matcher(htmlEscaped).replaceAll(
+                "<em class='query'>");
+        final Pattern highlightEndPattern = Pattern.compile("&lt;/em&gt;");
+        return highlightEndPattern.matcher(startUnescaped).replaceAll("</em>");
+       */
     }
 
   }
