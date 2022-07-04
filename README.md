@@ -1,20 +1,15 @@
 # WASP
-WASP, is a fully functional prototype of a personal web archive and search system.
+Personal web archive and search.
 
 ## Quickstart
-You need to have [Docker](https://docker.io) installed on your system. You can then immediately start WASP like this:
-```
-docker run -p 8001:8001 -p 8002:8002 -p 8003:8003 --name wasp -d webis/wasp:0.2.0
-```
-Depending on your Docker setup, you might need to run this command as an administrator or add ```sudo``` in front of it.
+- Install [Docker](https://docker.io)
+- `docker run -p 8001:8001 -p 8002:8002 -p 8003:8003 --name wasp -d ghcr.io/webis-de/wasp:0.3.0 # might require 'sudo'`
+- Change your proxy to `localhost:8001` for HTTP+HTTPS with `localhost` for an exception (often by default); consider installing a proxy switching plugin
+- Clear browser cache
 
-After a few seconds, you should already see the search interface in your browser at (http://localhost:8003/search)
+- Open [http://localhost:8003/search] in your browser
 
-Next, you will have to change the proxy settings of your browser to route the requests and responses through it. How this can be done depends on the browser ([Chrome](https://support.mozilla.org/en-US/kb/connection-settings-firefox), [Edge](https://www.rogers.com/customer/support/article/set-up-proxy-settings-in-microsoft-edge), [Firefox](https://support.mozilla.org/en-US/kb/connection-settings-firefox), [Opera](https://customers.trustedproxies.com/knowledgebase.php?action=displayarticle&id=40), [Safari](https://support.apple.com/kb/PH21420?locale=en_US)). However, also consider using a tailored proxy switching plugin for your browser, which allows you to disable/enable WASP easily. In all cases, you need to specify (localhost:8001) as proxy for HTTP and HTTPS and have "localhost" as an exception (often so by default).
-
-Now it is time to clear your browser's cache (or use incognito mode). Otherwise you will be disappointed when some elements are missing in the archive.
-
-You are already set up to use WASP for HTTP connections. For HTTP*S* connections, you have to trust WASP to identify foreign web pages for you. This can be done either by trusting the certificate of WASP's [warcprox](https://github.com/internetarchive/warcprox) instance in your browser (you can get it with ```docker cp wasp:/home/user/srv/warcprox/warcprox-ca.pem .```, then look at your browser's help page on how to import it), or by disabling the security check in your browser (e.g., you can start Chrome with *--ignore-certificate-errors*). See additional instructions for [firefox on windows 10](ffwin10.md) if needed.
+You are already set up to use WASP for HTTP connections. For HTTP*S* connections, you have to trust WASP to identify foreign web pages for you. This can be done either by trusting the certificate of WASP's [warcprox](https://github.com/internetarchive/warcprox) instance in your browser (you can get it with ```docker cp wasp:/home/user/srv/warcprox/warcprox-ca.pem .```, then look at your browser's help page on how to import it), or by disabling the security check in your browser (e.g., you can start Chrome with *--ignore-certificate-errors*). See additional instructions for [firefox on windows 10](#wasp-under-windows) if needed.
 
 NOTE: Above instructions for HTTPS disable some security features of your browser. Do this for testing the technology, but do *not* use WASP for web pages where you are concerned about security or privacy.
 
@@ -30,3 +25,13 @@ A pre-build Docker image of WASP is available on [dockerhub](https://hub.docker.
 ## Troubleshooting
   - The search page never retrieves results/does not show new results!
       - WASP currently uses the default Elastic Search settings which turn the index read-only once your disk reaches 95% of used space. Since the index is (if you did not reconfigure that) stored on your root partition, you might need to clean up there.
+
+
+### WASP under Windows
+Under Windows 10 Pro, the Docker container works fine.
+_Students and acedemic staff may be able to purchase a cheap license (free for students) to Windows 10 for Education, that includes the same native support for Docker containers._
+
+Installing the certificate `warcprox-ca.pem` does not work correctly in Firefox when you simply open the file.
+You need to explicitly add the certificate in the _Authorities_ tab of the certificates panel (so __not__ in the _Your Certificates_ tab).
+
+After doing that, you are __ready to WASP__ under Windows 10.

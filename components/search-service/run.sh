@@ -1,11 +1,11 @@
 #!/bin/bash
 
 elasticsearch_port=${ELASTICSEARCH_PORT:=9200} # TODO: not used yet
-search_port=${SEARCH_PORT:=8003}
+search_port=${SEARCH_PORT:=8002}
 
 case $1 in
   start)
-    java -cp ../*.jar de.webis.warc.ui.SearchService $search_port 1> sysout.txt 2> syserr.txt &
+    java -cp ../*.jar de.webis.wasp.SearchService $search_port 1> wasp-search.log 2>&1 &
     echo $! > pid.txt
     ;;
   stop)

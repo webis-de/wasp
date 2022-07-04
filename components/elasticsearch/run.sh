@@ -2,7 +2,7 @@
 
 case $1 in
   start)
-    ./elasticsearch-*/bin/elasticsearch 1> sysout.txt 2> syserr.txt &
+    ./elasticsearch-*/bin/elasticsearch 1> elastic.log 2>&1 &
     echo $! > pid.txt
     ;;
   stop)

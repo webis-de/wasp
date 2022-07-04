@@ -1,0 +1,5 @@
+framed_replay: false
+proxy:
+  coll: wasp
+  ca_name: WASP CA
+  recording: true
