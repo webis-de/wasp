@@ -23,14 +23,14 @@ USER user
 
 RUN mkdir -p /home/user/app/pywb /home/user/app/elasticsearch /home/user/app/warc-indexer /home/user/app/search-service
 WORKDIR /home/user/app/pywb
-RUN virtualenv env
-RUN /bin/bash -c "source env/bin/activate && pip3 install pywb==2.6.7 && wb-manager init archive"
+RUN virtualenv env \
+  && /bin/bash -c "source env/bin/activate && pip3 install pywb==2.6.7 && wb-manager init wasp"
 WORKDIR /home/user/app/elasticsearch
-RUN curl -L -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.2.3-linux-x86_64.tar.gz
-RUN tar xzf elasticsearch-*.tar.gz
-RUN rm elasticsearch-*.tar.gz
-RUN sed -i 's/^#path\.data.*/path.data: \/home\/user\/app\/elasticsearch\/index/' elasticsearch-*/config/elasticsearch.yml
-RUN sed -i 's/^#path\.logs.*/path.logs: \/home\/user\/app\/elasticsearch\/logs/' elasticsearch-*/config/elasticsearch.yml
+RUN curl -L -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.2.3-linux-x86_64.tar.gz \
+  && tar xzf elasticsearch-*.tar.gz \
+  && rm elasticsearch-*.tar.gz \
+  && sed -i 's/^#path\.data.*/path.data: \/home\/user\/app\/elasticsearch\/index/' elasticsearch-*/config/elasticsearch.yml \
+  && sed -i 's/^#path\.logs.*/path.logs: \/home\/user\/app\/elasticsearch\/logs/' elasticsearch-*/config/elasticsearch.yml
 
 
 WORKDIR /home/user/app
