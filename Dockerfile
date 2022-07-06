@@ -3,6 +3,8 @@ RUN mkdir /app
 RUN apt update && apt install -y --no-install-recommends \
   maven
 COPY pom.xml /app/
+COPY resources /app/resources/
+COPY src /app/src/
 WORKDIR /app/
 RUN mvn clean compile assembly:single
 
@@ -30,11 +32,16 @@ RUN curl -L -O https://artifacts.elastic.co/downloads/elasticsearch/elasticsearc
   && tar xzf elasticsearch-*.tar.gz \
   && rm elasticsearch-*.tar.gz \
   && sed -i 's/^#path\.data.*/path.data: \/home\/user\/app\/elasticsearch\/index/' elasticsearch-*/config/elasticsearch.yml \
-  && sed -i 's/^#path\.logs.*/path.logs: \/home\/user\/app\/elasticsearch\/logs/' elasticsearch-*/config/elasticsearch.yml
+  && sed -i 's/^#path\.logs.*/path.logs: \/home\/user\/app\/elasticsearch\/logs/' elasticsearch-*/config/elasticsearch.yml \
+  && echo "xpack.security.enabled: false" | tee -a elasticsearch-*/config/elasticsearch.yml
 
 
 WORKDIR /home/user/app
-COPY components/* /home/user/app/
+COPY app/control.sh /home/user/app/
+COPY app/elasticsearch/ /home/user/app/elasticsearch
+COPY app/search-service/ /home/user/app/search-service
+COPY app/warc-indexer/ /home/user/app/warc-indexer
+COPY app/pywb/ /home/user/app/pywb
 COPY --from=compiler /app/target/*-jar-with-dependencies.jar /home/user/app/
 CMD ["./control.sh","start"]
 

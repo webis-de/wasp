@@ -8,14 +8,14 @@ case $1 in
       echo "Restarting"
     else
       echo "Waiting for elasticsearch to start"
-      until grep -q "started" /home/user/app/elasticsearch/elastic.log;do
+      until grep -q "AllocationService.*current.health=.GREEN" /home/user/app/elasticsearch/elastic.log;do
         sleep 1
       done
       echo "Should work now!"
       java -cp ../*.jar de.webis.wasp.index.Index $elasticsearch_port 1> init.log 2>&1
     fi
 
-    java -cp ../*.jar de.webis.wasp.index.WarcIndexer /home/user/app/pywb/collections/wasp/archive $elasticsearch_port 1> indexer.log 2>&1 &
+    java -cp ../*.jar de.webis.wasp.WarcIndexingService /home/user/app/pywb/collections/wasp/archive $elasticsearch_port 1> indexer.log 2>&1 &
     echo $! > pid.txt
     ;;
   stop)

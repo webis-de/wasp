@@ -6,7 +6,7 @@ pywb_index_interval=${PYWB_INDEX_INTERVAL:=5}
 case $1 in
   start)
     source env/bin/activate
-    wayback --bind 127.0.0.1 --port $pywb_port --autoindex --auto-interval $pywb_index_interval 1> pywb.log 2>&1 &
+    wayback --port $pywb_port --autoindex --auto-interval $pywb_index_interval 1> pywb.log 2>&1 &
     echo $! > pid.txt
     ;;
   stop)
