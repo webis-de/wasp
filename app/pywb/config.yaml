@@ -1,4 +1,6 @@
 framed_replay: false
+collections:
+  live: $live
 proxy:
   coll: wasp
   ca_name: WASP CA

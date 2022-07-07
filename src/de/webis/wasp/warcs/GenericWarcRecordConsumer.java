@@ -50,7 +50,7 @@ implements Consumer<WarcRecord> {
       default:
         break;
       }
-    } catch (final IOException exception) {
+    } catch (final Throwable exception) {
       LOG.log(Level.WARNING, "Failed to index record " + Warcs.getId(record)
           + " of type " + Warcs.getType(record), exception);
     }
