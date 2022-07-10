@@ -63,7 +63,8 @@ implements Consumer<WarcRecord> {
   throws IOException {
     final String id = Warcs.getId(record);
     final String html = this.getHtml(record);
-    if (html == null) {
+    LOG.fine("accept response " + id + " html = " + (html != null));
+    if (html != null) {
       this.acceptHtmlResponse(id, html, time);
     } else {
       this.acceptNonHtmlResponse(id, time);

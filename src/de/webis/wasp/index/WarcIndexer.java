@@ -2,6 +2,7 @@ package de.webis.wasp.index;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.logging.Logger;
 import java.time.Instant;
 
 import de.webis.wasp.warcs.GenericHtmlWarcRecordConsumer;
@@ -14,6 +15,13 @@ import de.webis.wasp.warcs.GenericHtmlWarcRecordConsumer;
  */
 public class WarcIndexer
 extends GenericHtmlWarcRecordConsumer {
+
+  /////////////////////////////////////////////////////////////////////////////
+  // LOGGING
+  /////////////////////////////////////////////////////////////////////////////
+  
+  private static final Logger LOG =
+      Logger.getLogger(WarcIndexer.class.getName());
   
   /////////////////////////////////////////////////////////////////////////////
   // MEMBERS
@@ -53,6 +61,8 @@ extends GenericHtmlWarcRecordConsumer {
     if (title == null) { title = ""; }
     String content = document.getContent();
     if (content == null) { content = ""; }
+    LOG.fine("accept html response " + id
+        + " title = '" + title + "' content exists = " + !content.isEmpty());
     if (!title.isEmpty() || !content.isEmpty()) {
       this.getIndex().indexResponse(id, content, title);
     }

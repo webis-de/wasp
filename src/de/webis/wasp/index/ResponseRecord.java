@@ -170,16 +170,4 @@ public class ResponseRecord {
     return this.requests;
   }
 
-  /////////////////////////////////////////////////////////////////////////////
-  // FUNCTIONALITY
-  /////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Checks if this record is a revisit.
-   * @return If it is
-   */
-  public boolean isRevisit() {
-    return this.getRevisited() != null;
-  }
-
 }

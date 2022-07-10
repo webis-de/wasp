@@ -5,3 +5,6 @@ proxy:
   coll: wasp
   ca_name: WASP CA
   recording: true
+recorder:
+  source_coll: live
+  dedup_policy: revisit

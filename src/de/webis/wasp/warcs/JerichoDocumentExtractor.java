@@ -1,5 +1,6 @@
 package de.webis.wasp.warcs;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 import de.webis.wasp.warcs.GenericHtmlWarcRecordConsumer.Document;
@@ -28,7 +29,7 @@ implements Function<String, Document> {
 
   @Override
   public Document apply(final String html) {
-    final Source source = new Source(html);
+    final Source source = new Source(Objects.requireNonNull(html));
     
     final Renderer renderer = new Renderer(source);
     renderer.setMaxLineLength(0);

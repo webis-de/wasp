@@ -1,6 +1,6 @@
 #!/bin/bash
 
-services="elasticsearch pywb warc-indexer search-service"
+services="redis elasticsearch pywb warc-indexer search-service"
 
 for service in $services;do
   pushd $service

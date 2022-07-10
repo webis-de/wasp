@@ -49,11 +49,11 @@ extends HttpServlet {
   
   public static final String INIT_PARAMETER_REPLAY_SERVER = "replay.server";
 
-  public static final String DEFAULT_REPLAY_SERVER = "https://localhost:8002";
+  public static final String DEFAULT_REPLAY_SERVER = "http://localhost:8001";
   
   public static final String INIT_PARAMETER_REPLAY_COLLECTION = "replay.collection";
 
-  public static final String DEFAULT_REPLAY_COLLECTION = "archive";
+  public static final String DEFAULT_REPLAY_COLLECTION = "wasp";
 
   /////////////////////////////////////////////////////////////////////////////
   // REQUEST
