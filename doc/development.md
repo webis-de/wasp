@@ -7,14 +7,29 @@ sudo docker run -p 127.0.0.1:8001:8001 -p 127.0.0.1:8002:8002 --name wasp ghcr.i
 sudo docker cp wasp:/home/user/app/pywb/proxy-certs/pywb-ca.pem .
 ```
 
-WARNING: Failed to index record <urn:uuid:b0efea66-fe30-11ec-af6f-0242ac110002> of type response
-java.lang.NullPointerException: Cannot invoke "java.lang.CharSequence.length()" because "<parameter1>" is null
-	at net.htmlparser.jericho.Source.<init>(Source.java:117)
-	at de.webis.wasp.warcs.JerichoDocumentExtractor.apply(JerichoDocumentExtractor.java:31)
-	at de.webis.wasp.warcs.JerichoDocumentExtractor.apply(JerichoDocumentExtractor.java:18)
-	at de.webis.wasp.warcs.GenericHtmlWarcRecordConsumer.acceptHtmlResponse(GenericHtmlWarcRecordConsumer.java:76)
-	at de.webis.wasp.warcs.GenericWarcRecordConsumer.acceptResponse(GenericWarcRecordConsumer.java:67)
-	at de.webis.wasp.warcs.GenericWarcRecordConsumer.accept(GenericWarcRecordConsumer.java:42)
-	at de.webis.wasp.warcs.GenericWarcRecordConsumer.accept(GenericWarcRecordConsumer.java:19)
-	at de.webis.wasp.warcs.ContinuousWarcRecordReader.consume(ContinuousWarcRecordReader.java:91)
-	at de.webis.wasp.warcs.WarcRecordReader.run(WarcRecordReader.java:134)
+
+WARC/1.0
+WARC-Type: response
+WARC-Record-ID: <urn:uuid:6c7606bc-009d-11ed-858a-0242ac110002>
+WARC-Target-URI: http://example.org/
+WARC-Date: 2022-07-10T22:12:44Z
+WARC-IP-Address: 93.184.216.34
+Content-Type: application/http; msgtype=response
+Content-Length: 1011
+WARC-Payload-Digest: sha1:WJM2KPM4GF3QK2BISVUH2ASX64NOUY7L
+WARC-Block-Digest: sha1:AHTT7POCPQGX5HISIEJRSWCAJNRIW2SS
+
+
+WARC/1.0
+WARC-Type: revisit
+WARC-Record-ID: <urn:uuid:89c31605-c393-44bd-b6d7-9180f05ff6df>
+WARC-Target-URI: http://example.org/
+WARC-Date: 2022-07-10T22:12:56Z
+WARC-Profile: http://netpreserve.org/warc/1.0/revisit/identical-payload-digest
+WARC-Refers-To-Target-URI: http://example.org/
+WARC-Refers-To-Date: 2022-07-10T22:12:44Z
+WARC-Payload-Digest: sha1:WJM2KPM4GF3QK2BISVUH2ASX64NOUY7L
+WARC-Block-Digest: sha1:POVSAFA5NOXOKFZSM4ZVDBIYOTSG2YTS
+Content-Type: application/http; msgtype=response
+Content-Length: 380
+
