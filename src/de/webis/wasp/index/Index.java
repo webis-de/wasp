@@ -24,8 +24,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.query_dsl.ChildScoreMode;
 import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.IndexRequest;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.UpdateRequest;
 import co.elastic.clients.elasticsearch.core.search.Hit;
@@ -172,19 +174,21 @@ implements AutoCloseable {
   /**
    * Indexes a response record.
    * @param id The ID of the response
+   * @param uri The target URI of the response
    * @param content The extracted content from the response
    * @param title The title of the response
    * @return Whether the response has been indexed (always)
    * @throws IOException On writing to the index
    */
   public boolean indexResponse(
-      final String id, final String content, final String title)
+      final String id, final String uri,
+      final String content, final String title)
   throws IOException {
     final IndexRequest<ResponseRecord> indexRequest = IndexRequest.of(
         builder -> builder
           .index(INDEX_NAME)
           .id(Objects.requireNonNull(id))
-          .document(ResponseRecord.forPage(title, content)));
+          .document(ResponseRecord.forPage(uri, title, content)));
     this.getClient().index(indexRequest);
     LOG.fine("Index response " + id);
     return true;
@@ -193,26 +197,42 @@ implements AutoCloseable {
   /**
    * Indexes a revisit record.
    * @param id The ID of the revisit
-   * @param responseId The ID of the revisited response
+   * @param uri The target URI of the revisit
+   * @param originalTime The time of the first visit 
+   * @param instant The time of the revisit
    * @return Whether the revisit has been indexed (not if no such response
    * exists)
    * @throws IOException On reading or writing to the index
    */
-  public boolean indexRevisit(final String id, final String responseId)
+  public boolean indexRevisit(
+      final String id, final String uri,
+      final Instant originalTime, final Instant instant)
   throws IOException {
-    if (this.resolveResponse(responseId) == null) {
-      LOG.fine("No response found for ID = " + responseId + " for revisit");
+    final SearchRequest search = new SearchRequest.Builder()
+        .query(query -> query
+            .bool(main -> main
+                .must(time -> time.nested(nested -> nested
+                    .path(ResponseRecord.FIELD_REQUESTS)
+                    .scoreMode(ChildScoreMode.Max)
+                    .query(inner -> inner.match(range ->
+                      range.field(ResponseRecord.FIELD_REQUESTS + "."
+                          + RequestRecord.FIELD_DATE)
+                              .query(originalTime.toString())
+                    ))
+                ))
+            )
+        ).build();
+    final HitsMetadata<ResponseRecord> hits =
+      this.getClient().search(search, ResponseRecord.class).hits();
+    if (hits.hits().size() > 0) {
+      final String responseId = hits.hits().get(0).id();
+      LOG.fine("Index revisit " + uri + " -> " + responseId);
+      this.indexRequest(responseId, uri, instant);
+      return true;
+    } else {
+      LOG.warning("Index revisit " + uri + " FAILED");
       return false;
     }
-
-    final IndexRequest<ResponseRecord> indexRequest = IndexRequest.of(
-        builder -> builder
-          .index(INDEX_NAME)
-          .id(Objects.requireNonNull(id))
-          .document(ResponseRecord.forRevisit(responseId)));
-    this.getClient().index(indexRequest);
-    LOG.fine("Index revisit " + id + " -> " + responseId);
-    return true;
   }
 
   /**
@@ -249,7 +269,7 @@ implements AutoCloseable {
                 .source(scriptSource)
                 .params(params))));
     this.getClient().update(updateRequest, ResponseRecord.class);
-    LOG.fine("Index request -> " + concurrentId);
+    LOG.fine("Index request -> " + concurrentId + " at " + instant);
     return true;
   }
 
@@ -308,8 +328,8 @@ implements AutoCloseable {
   /////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Gets the response with the specified ID while resolving revisits.
-   * @param id The response or revisit ID
+   * Gets the response with the specified ID.
+   * @param id The response ID
    * @return The response
    * @throws IOException On searching the index
    */
@@ -319,13 +339,7 @@ implements AutoCloseable {
         get -> get.index(INDEX_NAME).id(id),
         ResponseRecord.class);
     if (getResponse.found()) {
-      final ResponseRecord response = getResponse.source();
-      final String revisited = response.getRevisited();
-      if (revisited != null) {
-        return this.resolveResponse(revisited);
-      } else {
-        return getResponse;
-      }
+      return getResponse;
     } else {
       return null;
     }

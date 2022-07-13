@@ -5,8 +5,18 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Function;
 
+/**
+ * Generic class for consuming HTML WARC records.
+ *
+ * @author johannes.kiesel@uni-weimar.de
+ *
+ */
 public abstract class GenericHtmlWarcRecordConsumer
 extends GenericWarcRecordConsumer {
+
+  /////////////////////////////////////////////////////////////////////////////
+  // CONSTANTS
+  /////////////////////////////////////////////////////////////////////////////
 
   /**
    * Default function for extracting HTML from response records.
@@ -71,14 +81,15 @@ extends GenericWarcRecordConsumer {
 
   @Override
   protected void acceptHtmlResponse(
-      final String id, final String html, final Instant time)
+      final String id, final String uri, final String html, final Instant time)
   throws IOException {
     final Document document = this.getDocumentExtractor().apply(html);
-    this.acceptHtmlResponse(id, document, time);
+    this.acceptHtmlResponse(id, uri, document, time);
   }
 
   protected abstract void acceptHtmlResponse(
-      final String id, final Document document, final Instant time)
+      final String id, final String uri, final Document document,
+      final Instant time)
   throws IOException;
 
   /////////////////////////////////////////////////////////////////////////////

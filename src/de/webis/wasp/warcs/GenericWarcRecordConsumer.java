@@ -62,23 +62,25 @@ implements Consumer<WarcRecord> {
   protected void acceptResponse(final WarcRecord record, final Instant time)
   throws IOException {
     final String id = Warcs.getId(record);
+    final String uri = Warcs.getTargetUri(record);
     final String html = this.getHtml(record);
-    LOG.fine("accept response " + id + " html = " + (html != null));
     if (html != null) {
-      this.acceptHtmlResponse(id, html, time);
+      LOG.fine("accept html response " + id + " -> " + uri);
+      this.acceptHtmlResponse(id, uri, html, time);
     } else {
-      this.acceptNonHtmlResponse(id, time);
+      LOG.fine("accept non-html response " + id + " -> " + uri);
+      this.acceptNonHtmlResponse(id, uri, time);
     }
   }
 
   protected void acceptNonHtmlResponse(
-      final String id, final Instant time)
+      final String id, final String uri, final Instant time)
   throws IOException {
     // do nothing by default
   }
 
   protected void acceptHtmlResponse(
-      final String id, final String html, final Instant time)
+      final String id, final String uri, final String html, final Instant time)
   throws IOException {
     // do nothing by default
   }
@@ -90,12 +92,14 @@ implements Consumer<WarcRecord> {
   throws IOException {
     this.acceptRevisit(
         Warcs.getId(record),
-        Warcs.getReferedToRecordId(record),
+        Warcs.getReferedToTargetUri(record),
+        Warcs.getReferedToDate(record),
         time);
   }
 
   protected void acceptRevisit(
-      final String id, final String revisitedId, final Instant time)
+      final String id, final String uri, final Instant originalTime,
+      final Instant time)
   throws IOException {
     // do nothing by default
   }

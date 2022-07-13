@@ -60,6 +60,10 @@ public class Warcs {
   
   public static final String HEADER_REFERS_TO = "WARC-Refers-To";
   
+  public static final String HEADER_REFERS_TO_TARGET_URI ="WARC-Refers-To-Target-URI";
+  
+  public static final String HEADER_REFERS_TO_DATE = "WARC-Refers-To-Date";
+  
   public static final String HEADER_TARGET_URI = "WARC-Target-URI";
   
   public static final String HEADER_CONCURRENT = "WARC-Concurrent-To";
@@ -135,6 +139,15 @@ public class Warcs {
   
   public static String getReferedToRecordId(final WarcRecord record) {
     return Warcs.getHeader(record, HEADER_REFERS_TO);
+  }
+  
+  public static String getReferedToTargetUri(final WarcRecord record) {
+    return Warcs.getHeader(record, HEADER_REFERS_TO_TARGET_URI);
+  }
+  
+  public static Instant getReferedToDate(final WarcRecord record) {
+    final String date = Warcs.getHeader(record, HEADER_REFERS_TO_DATE);
+    return Instant.from(HEADER_DATE_FORMAT.parse(date));
   }
 
   /////////////////////////////////////////////////////////////////////////////

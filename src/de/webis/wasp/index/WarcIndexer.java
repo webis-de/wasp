@@ -55,7 +55,8 @@ extends GenericHtmlWarcRecordConsumer {
 
   @Override
   protected void acceptHtmlResponse(
-      final String id, final Document document, final Instant time)
+      final String id, final String uri,
+      final Document document, final Instant time)
   throws IOException {
     String title = document.getTitle();
     if (title == null) { title = ""; }
@@ -64,15 +65,16 @@ extends GenericHtmlWarcRecordConsumer {
     LOG.fine("accept html response " + id
         + " title = '" + title + "' content exists = " + !content.isEmpty());
     if (!title.isEmpty() || !content.isEmpty()) {
-      this.getIndex().indexResponse(id, content, title);
+      this.getIndex().indexResponse(id, uri, content, title);
     }
   }
 
   @Override
   protected void acceptRevisit(
-      final String id, final String revisitedId, final Instant time)
+      final String id, final String uri, final Instant originalTime,
+      final Instant time)
   throws IOException {
-    this.getIndex().indexRevisit(revisitedId, id);
+    this.getIndex().indexRevisit(id, uri, originalTime, time);
   }
 
   @Override
